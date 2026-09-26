@@ -1,4 +1,9 @@
-import { sendChat } from "./helpers";
+import {
+  sendChat,
+  changeRuleViaApi,
+  pauseRuleViaApi,
+  ruleFromApi,
+} from "./helpers";
 import { test, expect, demoApprove } from "./helpers";
 test("chat consent persists a versioned rule then change and stop", async ({
   page,
@@ -50,28 +55,26 @@ test("chat consent persists a versioned rule then change and stop", async ({
     initial[1].authorization.approvalId,
   );
   await page.goto("/rules");
-  await page.getByRole("tab", { name: "Deposit operations" }).click();
-  await page.getByText("Edit settings", { exact: true }).click();
-  const payment = page
-    .locator("section.panel")
-    .filter({ has: page.getByRole("heading", { name: /Automatic payments/ }) });
-  await expect(
-    page.getByLabel("Monthly payment limit (JPY)").first(),
-  ).toHaveValue("200000");
-  await page.getByLabel("Monthly payment limit (JPY)").first().fill("300000");
-  await payment.getByRole("button", { name: "Save changes" }).click();
-  await demoApprove(page);
-  await expect(payment.getByText("Active · Version 2")).toBeVisible();
-  await payment.getByRole("button", { name: "Pause" }).click();
-  await expect(payment.getByText("Paused · Version 3")).toBeVisible();
-  await payment.getByRole("button", { name: "Enable" }).click();
-  await demoApprove(page);
-  await expect(payment.getByText("Active · Version 4")).toBeVisible();
+  const payment = await ruleFromApi(page, "payment");
+  expect(payment.monthlyLimitJpy).toBe("200000");
+  const updated = await changeRuleViaApi(page, "payment", {
+    monthlyLimitJpy: "300000",
+    paymentRecipients: payment.paymentRecipients!.map((recipient, index) =>
+      index === 0 ? { ...recipient, monthlyLimitJpy: "300000" } : recipient,
+    ),
+  });
+  expect(updated).toMatchObject({ version: 2, status: "active" });
+  expect(await pauseRuleViaApi(page, "payment")).toMatchObject({
+    version: 3,
+    status: "stopped",
+  });
+  expect(
+    await changeRuleViaApi(page, "payment", { enabled: true }),
+  ).toMatchObject({ version: 4, status: "active" });
   await page.reload();
-  await page.getByRole("tab", { name: "Deposit operations" }).click();
-  await page.getByText("Edit settings", { exact: true }).click();
+  expect((await ruleFromApi(page, "payment")).monthlyLimitJpy).toBe("300000");
   await expect(
-    page.getByLabel("Monthly payment limit (JPY)").first(),
-  ).toHaveValue("300000");
+    page.getByRole("heading", { name: "Manageable amount" }),
+  ).toBeVisible();
   await page.screenshot({ path: "/tmp/td-bank-rules.png", fullPage: true });
 });

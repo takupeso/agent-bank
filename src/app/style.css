@@ -1123,31 +1123,52 @@ details[open] {
   overflow-wrap: anywhere;
 }
 
-.rules-tabs {
-  display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--line);
-  margin-top: 28px;
+.internal-agent > h2 {
+  margin: 0 0 28px;
+  font-size: 20px;
 }
-.rules-tabs button {
-  flex: 1;
-  padding: 14px 8px;
-  border: 0;
-  border-radius: 0;
+.internal-agent .automation-access {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+.automation-amount h3,
+.automation-access h3 {
+  margin: 0 0 16px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.automation-amount > .automation-total {
+  display: block;
+  font-size: clamp(36px, 7vw, 56px);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.automation-amount p {
+  color: var(--muted);
+  margin: 12px 0 0;
+}
+.automation-access-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+.automation-access-row + .automation-access-row {
+  margin-top: 16px;
+}
+.automation-access-row p {
+  margin: 0 0 6px;
+  line-height: 1.6;
+}
+.automation-access-row button {
   background: transparent;
   color: var(--muted);
-  border-bottom: 3px solid transparent;
-  font-size: 13px;
-}
-.rules-tabs button[aria-selected="true"] {
-  color: var(--blue);
-  border-bottom-color: var(--blue);
-  font-weight: 700;
-}
-.rules-intro {
-  font-size: 13px;
-  color: var(--muted);
-  margin: 20px 0;
+  border: 1px solid var(--line);
+  font-size: 12px;
 }
 .rule-facts {
   margin: 14px 0;

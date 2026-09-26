@@ -40,11 +40,9 @@ test("replay complete demo twice and inspect all five screens", async ({
       fullPage: true,
     });
     await page.goto("/rules");
-    await page.getByRole("tab", { name: "Token operations" }).click();
-    await page.getByText("Edit settings", { exact: true }).click();
     await expect(
-      page.getByLabel("Investment limit per transaction (JPY)"),
-    ).toHaveValue("400000");
+      page.getByRole("heading", { name: "Manageable amount" }),
+    ).toBeVisible();
     await page.screenshot({
       path: `/tmp/td-demo-rules-${cycle}.png`,
       fullPage: true,
