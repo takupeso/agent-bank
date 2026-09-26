@@ -9,7 +9,7 @@ const config: NextConfig = {
         headers: [{ key: "Cache-Control", value: "no-store" }],
       },
       {
-        source: "/world-agents",
+        source: "/world-agents/:path*",
         headers: [
           { key: "Cache-Control", value: "no-store" },
           { key: "Referrer-Policy", value: "no-referrer" },

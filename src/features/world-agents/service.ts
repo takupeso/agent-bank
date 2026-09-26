@@ -192,3 +192,11 @@ export async function completeWorldCheck(browser: string, url: URL) {
     throw new Error("World verification did not complete");
   }
 }
+
+// This accessor stays server-only; callers must separately prove account ownership.
+export function verifiedWorldCheck(browser: string) {
+  if (worldCheckStatus(browser).status !== "verified")
+    throw new Error("Fresh World verification required");
+  const a = read(browser)!;
+  return { requestId: a.state, identity: a.identity! };
+}

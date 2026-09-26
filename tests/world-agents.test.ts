@@ -252,3 +252,75 @@ test("HTTP rejects cross-origin starts and exposes neither identity nor bank per
     bankAccess: false,
   });
 });
+
+const external = await import("../src/features/external-agents/service");
+const bankAuth = await import("../src/server/auth");
+const ledger = await import("../src/integrations/td-ledger");
+const externalRoute = await import(
+  "../src/app/api/external-agent/balance/route"
+);
+function bankFixture() {
+  process.env.BANK_AUTH_MODE = "local-demo";
+  process.env.BANK_BIND_HOST = "127.0.0.1";
+  const human = bankAuth.issueHumanSession(null);
+  const request = new Request("https://bank.example", {
+    headers: { cookie: `bank_session=${human.token}` },
+  });
+  const p = bankAuth.authenticateRequest(request)!;
+  sqlite.exec(
+    "CREATE TABLE IF NOT EXISTS external_world_accounts (account_id TEXT PRIMARY KEY,data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS external_agent_grants (id TEXT PRIMARY KEY,hash TEXT UNIQUE NOT NULL,proof TEXT UNIQUE NOT NULL,data TEXT NOT NULL); DELETE FROM external_world_accounts; DELETE FROM external_agent_grants;",
+  );
+  const state = {
+    id: "external-demo",
+    token: "0x0000000000000000000000000000000000000001",
+    customer: ledger.customer,
+    vault: "0x0000000000000000000000000000000000000002",
+  };
+  sqlite
+    .prepare("INSERT OR REPLACE INTO demo_instances VALUES(?,?,?)")
+    .run(state.id, JSON.stringify(state), "active");
+  sqlite
+    .prepare("UPDATE control SET active_instance=? WHERE id=1")
+    .run(state.id);
+  return { p, human };
+}
+test("authorized external agent can read the account balance", async () => {
+  const { p } = bankFixture();
+  await begin();
+  await service.completeWorldCheck(owner, callback());
+  external.connectAccount(p, owner);
+  const grant = external.grantBalance(p, owner, "Demo AI");
+  mock.method(ledger.client, "readContract", async () => 1250n);
+  const response = await externalRoute.GET(
+    new Request("https://bank.example/api/external-agent/balance", {
+      headers: { authorization: `Bearer ${grant.token}` },
+    }),
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    account: "Account A",
+    asset: "TD",
+    unit: "JPY",
+    available: "1250",
+    locked: "1250",
+    scope: "balance:read",
+    environment: "demo",
+  });
+});
+
+test("external agent without permission cannot read the account balance", async () => {
+  const { p } = bankFixture();
+  await begin();
+  await service.completeWorldCheck(owner, callback());
+  external.connectAccount(p, owner);
+  const read = mock.method(ledger.client, "readContract", async () => 1250n);
+  const response = await externalRoute.GET(
+    new Request("https://bank.example/api/external-agent/balance", {
+      headers: {
+        authorization: `Bearer abg.00000000-0000-4000-8000-000000000001.${"b".repeat(64)}`,
+      },
+    }),
+  );
+  assert.equal(response.status, 401);
+  assert.equal(read.mock.callCount(), 0);
+});

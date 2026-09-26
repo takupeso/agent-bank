@@ -69,7 +69,11 @@ export default function WorldAgentsPage() {
           <BrandLogo size={56} />
         </span>
         <p>Agent Bank / World ID for Agents</p>
-        <h1>Connect with World</h1>
+        <h1>
+          {status?.status === "verified"
+            ? "World verified"
+            : "Connect with World"}
+        </h1>
         <p>This event sandbox uses mock proofs.</p>
         <p role="status">
           {status ? messages[status.status] : "Checking your connection…"}
@@ -79,6 +83,13 @@ export default function WorldAgentsPage() {
         )}
         {status && !status.configured && (
           <p>A developer needs to configure the World connection.</p>
+        )}
+        {status?.status === "verified" && (
+          <p>
+            <Link href="/world-agents/connect">
+              Continue to account connection →
+            </Link>
+          </p>
         )}
         <button
           disabled={!status?.configured || busy}

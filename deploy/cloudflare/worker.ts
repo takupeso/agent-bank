@@ -50,9 +50,23 @@ const cookieName = "demo_sandbox";
 export default {
   async fetch(request: Request, env: Env) {
     const url = new URL(request.url);
-    const id = new RegExp(`(?:^|;\\s*)${cookieName}=([a-f0-9-]{36})`).exec(
-      request.headers.get("cookie") ?? "",
-    )?.[1];
+    const external = url.pathname === "/api/external-agent/balance";
+    const routedId =
+      external && request.method === "GET"
+        ? /^Bearer abg\.([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\.[a-f0-9]{64}$/.exec(
+            request.headers.get("authorization") ?? "",
+          )?.[1]
+        : undefined;
+    if (external && !routedId)
+      return Response.json(
+        { error: "Agent credential required" },
+        { status: 401, headers: { "Cache-Control": "no-store" } },
+      );
+    const id =
+      routedId ||
+      new RegExp(`(?:^|;\\s*)${cookieName}=([a-f0-9-]{36})`).exec(
+        request.headers.get("cookie") ?? "",
+      )?.[1];
     if (url.pathname === "/new-sandbox" || !id) {
       // Redirect first, so clients that drop cookies never start a container.
       const target =
@@ -68,6 +82,7 @@ export default {
     }
     const headers = new Headers(request.headers);
     headers.set("x-demo-origin", url.origin);
+    if (external) headers.delete("cookie");
     return getContainer(env.BANK_SANDBOX, id).fetch(
       new Request(request, { headers }),
     );

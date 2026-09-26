@@ -32,3 +32,6 @@ tmp/
 *.sqlite*
 *.db
 .wrangler/
+
+# Downloaded external-agent access credentials
+agent-bank-connection*.json

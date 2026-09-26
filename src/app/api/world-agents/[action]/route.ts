@@ -1,3 +1,16 @@
+import { z } from "zod";
+import {
+  authenticateRequest,
+  requirePrincipal,
+  cookieValue,
+} from "@/server/auth";
+import { failure } from "@/server/http";
+import {
+  connectAccount,
+  connectionStatus,
+  grantBalance,
+  revokeBalance,
+} from "@/features/external-agents/service";
 import {
   beginWorldCheck,
   browserSecret,
@@ -69,6 +82,16 @@ function redirect() {
 }
 
 export async function GET(req: Request) {
+  if (action(req) === "connection") {
+    try {
+      const p = requirePrincipal(authenticateRequest(req), "human");
+      return Response.json(connectionStatus(p, browser(req) ?? ""), {
+        headers,
+      });
+    } catch (e) {
+      return failure(e);
+    }
+  }
   if (action(req) === "status") {
     const configured = settingsReady();
     return Response.json(
@@ -109,6 +132,34 @@ export async function POST(req: Request) {
       { error: "Request not allowed" },
       { status: 403, headers },
     );
+  }
+  if (["connect", "grant", "revoke"].includes(action(req) ?? "")) {
+    try {
+      const p = requirePrincipal(authenticateRequest(req), "human");
+      const body = await req.json();
+      if (action(req) === "connect") {
+        z.object({}).strict().parse(body);
+        connectAccount(p, browser(req) ?? "");
+        return Response.json({ connected: true }, { headers });
+      }
+      if (action(req) === "grant") {
+        const input = z.object({ name: z.string() }).strict().parse(body);
+        return Response.json(
+          grantBalance(
+            p,
+            browser(req) ?? "",
+            input.name,
+            cookieValue(req, "demo_sandbox"),
+          ),
+          { headers },
+        );
+      }
+      const input = z.object({ id: z.uuid() }).strict().parse(body);
+      revokeBalance(p, input.id);
+      return Response.json({ revoked: true }, { headers });
+    } catch (e) {
+      return failure(e);
+    }
   }
   if (action(req) === "cancel") {
     const owner = browser(req);
