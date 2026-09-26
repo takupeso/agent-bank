@@ -194,10 +194,7 @@ test("World begin failure still offers explicit demo approval", async ({
     })
     .click();
   const mail = page.getByRole("region", { name: "メール閲覧の確認" });
-  const proposal = page.getByText("自動支払いの設定案");
-  await Promise.race([mail.waitFor(), proposal.waitFor()]);
-  if (await mail.isVisible())
-    await mail.getByRole("button", { name: "この内容で許可して確認" }).click();
+  await mail.getByRole("button", { name: "この内容で許可して確認" }).click();
   await expect(page.getByText("自動支払いの設定案")).toBeVisible();
   await openDemoActions(page);
   await page
