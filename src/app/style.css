@@ -817,37 +817,6 @@ header p {
     transform: translateY(-3px);
   }
 }
-.agent-next {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 12px 16px 0;
-  padding: 12px 12px 12px 16px;
-  border: 1px solid #c7cdf8;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #eef0ff 0%, #f5efff 100%);
-}
-.agent-next > div > span {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--accent-ink);
-}
-.agent-next p {
-  margin: 2px 0 0;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--ink-2);
-}
-.agent-next button {
-  flex: 0 0 auto;
-  min-height: 38px;
-  padding: 8px 14px;
-  font-size: 12px;
-}
 .agent-tools {
   flex: 0 0 auto;
   margin: 10px 16px 0;

@@ -6,28 +6,9 @@ import { PaymentPlanCard } from "./payment-plan-card";
 import { Conditions, ProposalCard } from "./rule-card";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Message, Invoice, Mail, Proposal, Rule } from "@/shared/domain";
-function journeyProgress(messages: Message[]) {
-  const has = (test: (m: Message) => boolean) => messages.some(test);
-  const lastInvested = messages.findLastIndex((m) =>
-    m.text.includes("Started investing"),
-  );
-  const lastRedeemed = messages.findLastIndex((m) =>
-    m.text.startsWith("Investments redeemed"),
-  );
-  return [
-    has((m) => m.kind === "payment-plan" || m.kind === "invoices"),
-    has((m) => m.kind === "rule") || lastInvested >= 0,
-    lastInvested >= 0,
-    has((m) => m.text.startsWith("Paid ¥")),
-    lastInvested >= 0 && lastRedeemed > lastInvested,
-  ];
-}
-const grantAccess =
-  "I grant access to my card payment information and invoices.";
 export function AgentPanel() {
   const conversation = useRef<HTMLElement>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [loaded, setLoaded] = useState(false);
   const [text, setText] = useState("");
   const [pendingText, setPendingText] = useState("");
   const [approval, setApproval] = useState<{
@@ -50,7 +31,6 @@ export function AgentPanel() {
           const next = await r.json();
           if (attempt === generation) setMessages(next);
         }
-        if (attempt === generation) setLoaded(true);
       });
     };
     const reset = () => {
@@ -143,42 +123,11 @@ export function AgentPanel() {
       setBusy(false);
     }
   }
-  const locked = busy || !!approval || !!mailPermission;
-  const progress = journeyProgress(messages);
-  const current = progress.indexOf(false);
   const pendingPlan = messages.some(
     (m) =>
       m.kind === "payment-plan" &&
       (m.data?.proposal as Proposal)?.status === "proposed",
   );
-  const nextStep = !loaded
-    ? undefined
-    : current === 0
-      ? {
-          label: "Grant card and invoice access",
-          hint: "The agent reads only the sample statements you approve.",
-          run: () => send(grantAccess),
-        }
-      : current === 1 && pendingPlan
-        ? {
-            label: "Approve the plan",
-            hint: "Payments stay scheduled while the deposit is invested.",
-            run: () => send("Yes"),
-          }
-        : current === 3 || (current === 4 && !progress[3])
-          ? {
-              label: "Move to the next payment date",
-              hint: "Watch the agent withdraw and pay on time.",
-              run: () =>
-                document.querySelector<HTMLButtonElement>(".demo-fab")?.click(),
-            }
-          : current === 4
-            ? {
-                label: "Redeem investments",
-                hint: "Return invested funds to your deposit account.",
-                run: () => send("Redeem all investments to TD"),
-              }
-            : undefined;
   return (
     <aside id="agent-panel" className="agent-panel" aria-label="Agent chat">
       <header className="agent-panel-header">
@@ -279,27 +228,8 @@ export function AgentPanel() {
           </article>
         )}
       </section>
-      {nextStep && (
-        <div className="agent-next">
-          <div>
-            <span>Next step</span>
-            <p>{nextStep.hint}</p>
-          </div>
-          <button
-            type="button"
-            aria-label={`Next step: ${nextStep.label}`}
-            disabled={locked}
-            onClick={() => {
-              setError("");
-              void nextStep.run();
-            }}
-          >
-            {nextStep.label}
-          </button>
-        </div>
-      )}
       <div className="chat-plan-actions">
-        {pendingPlan && !nextStep && (
+        {pendingPlan && (
           <button
             disabled={busy || !!approval || !!mailPermission}
             onClick={() => void send("Yes")}

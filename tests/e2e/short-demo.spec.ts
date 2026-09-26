@@ -42,7 +42,8 @@ for (const width of [1440, 390]) {
       fullPage: true,
     });
     await page
-      .getByRole("button", { name: "Next step: Approve the plan", exact: true })
+      .locator(".chat-plan-actions")
+      .getByRole("button", { name: "Yes", exact: true })
       .click();
     await expect(
       page.getByText(
