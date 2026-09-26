@@ -14,7 +14,7 @@ function chatFailure(e: unknown) {
     return Response.json(
       {
         error:
-          "Redeem any remaining investments, then reset the demo on Home to start this plan.",
+          "Redeem any remaining investments, then reset the demo from Demo controls to start this plan.",
       },
       { status: 400 },
     );
