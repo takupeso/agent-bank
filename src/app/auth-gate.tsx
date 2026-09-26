@@ -1,6 +1,7 @@
 "use client";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { WorldWidget } from "./world-widget";
+import { BrandLogo } from "./brand-logo";
 import { apiPost } from "./api-client";
 import type { Challenge, WorldStatus } from "./world-approval";
 const LogoutContext = createContext<{
@@ -131,6 +132,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   return (
     <main id="main" className="auth-screen">
       <section className="panel">
+        <span className="auth-logo">
+          <BrandLogo size={56} />
+        </span>
         <h1>Log in to Agent Bank</h1>
         <p>
           Verify you are human using the World ID linked to your account to log
