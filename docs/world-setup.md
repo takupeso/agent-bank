@@ -53,3 +53,13 @@ pnpm auth agent .data/world-agent-credential
 ## 検証結果
 
 Worldの実機接続結果は環境とフローに依存します。ローカルテストの成功をWorld Appでの動作確認として扱わないでください。
+
+## World ID for Agents（認証単独テスト）
+
+`/world-agents`は上記のIDKit連携とは独立した、公式イベント用OIDCサンドボックスへの接続確認画面です。現段階では銀行セッションやAgent権限を発行しません。
+
+[Agents Portal](https://sandbox.auth.world.org/portal)でconfidential clientを作成し、認証方式を`client_secret_basic`、Redirect URIを`https://agent-bank-demo.barabara0224.workers.dev/api/world-agents/callback`に設定します。`.env.local`には`WORLD_AGENTS_CLIENT_ID`、`WORLD_AGENTS_CLIENT_SECRET`、`WORLD_AGENTS_REDIRECT_URI`を保存します。Cloudflare公開時は同名のWorker secretsとして設定してください。値を会話やGitへ貼り付けないでください。
+
+HTTPSの公開先から開始して同じブラウザへ戻る必要があります。localhostで開始して公開先へ戻ると認証要求のcookieとDBが一致しません。公式サンドボックスのmock proofを使用し、実在の人間の証明や銀行KYCとは区別します。
+
+Code + S256 PKCE、state、nonce、RS256署名、issuer、audience、期限、acr/amr、auth_timeをバックエンドで検査します。再認証時には直前の有効な認証との同一性も照合します。取消・期限切れ・検証失敗では成功に遷移しません。単体テストの偽IdPは検証処理のテスト専用で、公式接続成功の証拠ではありません。

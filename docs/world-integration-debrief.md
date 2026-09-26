@@ -2,6 +2,14 @@
 
 この記録は特定の開発環境で得た技術的な観察を、実施日時・個人情報・認証データを除いて整理したものです。World全体の提供状況を断定するものではありません。
 
+## World ID for Agents / Stage A
+
+公式OIDCサンドボックスのdiscovery取得と認証開始URLの生成を確認しました。認証完了・公式結果の検証成功は公開先で未確認です。最初の成功までの時間はまだ計測結果がありません。
+
+IDKit用App/RPとAgents用OIDC clientが別設定である点、HTTPS callbackとブラウザcookie・保存先の一致が必要な点が最初の摩擦でした。`openid-client`ではTLS経由のID token処理に加え、`enableNonRepudiationChecks`で署名検査を明示的に有効化しました。公式ガイドのOIDC/step-up仕様を元に、銀行権限を発行しない単独の確認画面へ切り出したことが切り分けに役立ちました。
+
+テスト専用IdPではPKCE、nonce、署名・issuer・audience・期限・auth_time・acr/amr、不一致の本人、取消と競合、再利用拒否を検証しています。このテスト成功を公式IdPの認証完了として扱いません。公開テスト後に成功までの所要時間と、エラー調査に不足した情報を追記します。
+
 ## 試した方式と観察
 
 | 方式 | 観察 | 判断 |

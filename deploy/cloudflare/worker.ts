@@ -14,6 +14,9 @@ const forwarded = [
   "WORLD_RP_SIGNING_KEY",
   "WORLD_ENVIRONMENT",
   "WORLD_FLOW",
+  "WORLD_AGENTS_CLIENT_ID",
+  "WORLD_AGENTS_CLIENT_SECRET",
+  "WORLD_AGENTS_REDIRECT_URI",
 ] as const;
 type Env = Partial<Record<(typeof forwarded)[number], string>> & {
   BANK_SANDBOX: DurableObjectNamespace<BankSandbox>;
@@ -30,7 +33,9 @@ export class BankSandbox extends Container<Env> {
     );
     // Outbound access only when an external integration is switched on.
     const enableInternet =
-      envVars.AI_MODE === "gemini" || envVars.WORLD_MODE === "live";
+      envVars.AI_MODE === "gemini" ||
+      envVars.WORLD_MODE === "live" ||
+      Boolean(envVars.WORLD_AGENTS_CLIENT_ID);
     // Anvil, migration and `next start` take longer than the default 20s wait.
     await this.startAndWaitForPorts({
       startOptions: { envVars, enableInternet },
@@ -50,7 +55,8 @@ export default {
     )?.[1];
     if (url.pathname === "/new-sandbox" || !id) {
       // Redirect first, so clients that drop cookies never start a container.
-      const target = url.pathname === "/new-sandbox" ? "/" : url.pathname + url.search;
+      const target =
+        url.pathname === "/new-sandbox" ? "/" : url.pathname + url.search;
       return new Response(null, {
         status: 302,
         headers: {
