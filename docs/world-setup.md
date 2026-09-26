@@ -28,7 +28,8 @@ WORLD_APP_ID=app_your_app
 WORLD_RP_ID=rp_your_rp
 WORLD_RP_SIGNING_KEY=
 WORLD_ENVIRONMENT=production
-WORLD_FLOW=request
+WORLD_FLOW=session
+WORLD_ENROLL_WITHOUT_TICKET=true
 PUBLIC_ASSET_MODE=stub
 PUBLIC_TRANSACTIONS_ENABLED=false
 ```
@@ -37,17 +38,18 @@ PUBLIC_TRANSACTIONS_ENABLED=false
 
 ```sh
 pnpm auth agent .data/world-agent-credential
-pnpm auth enroll
 ```
 
-`BANK_AGENT_CREDENTIAL_FILE=.data/world-agent-credential`を設定して起動します。初回登録では5分間有効な`.data/enrollment-ticket`の値を本人が登録画面へ入力し、Worldで確認します。登録済みの場合はWorldログインします。モード切替前のセッションやAgent credentialは再利用できません。
+`BANK_AGENT_CREDENTIAL_FILE=.data/world-agent-credential`を設定して起動します。localhostでは最初のWorldログインでsession IDを口座に紐づけるため、登録チケットの入力は不要です。登録済みなら同じsession IDを使ってログインします。モード切替前のセッションやAgent credentialは再利用できません。`WORLD_ENROLL_WITHOUT_TICKET=true`は使い捨てのデモ環境または自分だけがアクセスするlocalhostで使ってください。
 
-本実装は`IDKit.request`のOrb proof（`proof_of_human`）と固定action `agent-bank-account`を使います。nonce・signal・action・environment・登録したnullifierとの対応を銀行側で確認し、Developer Portalで証明を検証します。session方式やSelfie Checkへの切替は提供していません。
+本実装は`IDKitSessionWidget`のOrb proof（`proof_of_human`）を使います。最初のログインで得たsession IDを口座に保存し、以後のログイン・承認ではそのIDをWorld Appへ指定します。銀行側でnonce・signal・session ID・environmentを照合し、Developer Portalで証明を検証します。各証明の再利用も拒否します。Selfie Checkは受け付けません。
 
-口座への登録とログインはWorldで確認します。サンプルメール閲覧の委任は、ログイン済み本人が画面に示された対象と範囲を確認して許可します。初期の支払い・運用条件は1件のWorld確認でまとめて承認します。以後の条件変更や再有効化には新しい承認が必要です。worldモードではデモ継続へ自動的に切り替わりません。停止・取消は本人が実行できます。
+従来の`WORLD_FLOW=request`で登録した口座はsession IDへ自動移行できません。既存DBを保持したまま設定だけを変えるとログインできないため、ローカルの新しいデモ環境・DBで登録し直してください。公開サンドボックスは使い捨てなので、新しいサンドボックスで登録します。
+
+ログインはWorldで確認します。サンプルメール閲覧の委任は、ログイン済み本人が画面に示された対象と範囲を確認して許可します。初期の支払い・運用条件は1件のWorld確認でまとめて承認します。以後の条件変更や再有効化には新しい承認が必要です。worldモードではデモ継続へ自動的に切り替わりません。停止・取消は本人が実行できます。
 
 `pnpm world:status`は設定や登録の状態を確認するコマンドです。DBには本人識別子・承認内容を保存するため、DB、proof、cookie、ticket、credentialをGitや会話へ貼り付けないでください。World連携は銀行KYCの代替ではありません。
 
 ## 検証結果
 
-単体/API 26件、World承認からAnvil Gatewayへの統合1件、Hardhat 1件、Playwright 5件、build/typecheckが成功。初期session計画のWorld実機検証は未実施。後続のOrb実機検証はWorld振り返りを参照。
+Worldの実機接続結果は環境とフローに依存します。ローカルテストの成功をWorld Appでの動作確認として扱わないでください。

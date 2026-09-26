@@ -154,11 +154,16 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
               disabled={
                 busy ||
                 !world.configured ||
-                (!world.enrolled && world.enrollTicketRequired && !ticket.trim())
+                (!world.enrolled &&
+                  world.enrollTicketRequired &&
+                  !ticket.trim())
               }
               onClick={() => void login(false)}
             >
-              Worldで{world.enrolled ? "ログイン" : "口座を登録"}
+              Worldで
+              {world.enrolled || !world.enrollTicketRequired
+                ? "ログイン"
+                : "口座を登録"}
             </button>
             {world.authMode === "local-demo" && (
               <button disabled={busy} onClick={() => void login(true)}>

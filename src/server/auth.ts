@@ -126,7 +126,9 @@ function validate(c: Credential) {
       binding.sessionId !== c.binding ||
       binding.appId !== config.appId ||
       binding.rpId !== config.rpId ||
-      binding.environment !== config.environment
+      binding.environment !== config.environment ||
+      binding.credential !== "proof_of_human" ||
+      binding.flow !== config.flow
     )
       throw new AuthorizationError(401);
   }

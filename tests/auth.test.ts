@@ -176,6 +176,9 @@ test("ticket plus World enrollment, login binding, one use and concurrent verify
   process.env.BANK_AUTH_MODE = "world";
   const ticket = auth.issueEnrollmentTicket();
   const c = login.beginLogin("enroll", "browser", ticket);
+  assert.equal(c.flow, "session");
+  assert.equal(c.sessionId, undefined);
+  assert.equal(c.action, undefined);
   mock.method(globalThis, "fetch", async (_url: unknown, init: RequestInit) => {
     const p = JSON.parse(init.body as string);
     return Response.json({
@@ -193,6 +196,8 @@ test("ticket plus World enrollment, login binding, one use and concurrent verify
   assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
   code(() => login.beginLogin("enroll", "browser", ticket), 409);
   const challenge = login.beginLogin("login", "browser");
+  assert.equal(challenge.flow, "session");
+  assert.equal(challenge.sessionId, p.session_id);
   await assert.rejects(
     login.completeLogin("enroll", challenge.id, "browser", proof(challenge)),
   );
@@ -215,6 +220,9 @@ test("ticket plus World enrollment, login binding, one use and concurrent verify
     checkRequest(req("/api/dashboard", "GET", session.token))!.authMode,
     "world",
   );
+  process.env.WORLD_FLOW = "request";
+  code(() => checkRequest(req("/api/dashboard", "GET", session.token)), 401);
+  process.env.WORLD_FLOW = "session";
   await assert.rejects(
     login.completeLogin("login", good.id, "browser", proof(good)),
   );

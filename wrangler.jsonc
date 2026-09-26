@@ -14,7 +14,7 @@
     "WORLD_APP_ID": "app_433eec8779f43b5bf71da0af13347f1a",
     "WORLD_RP_ID": "rp_099c693c134c943c",
     "WORLD_ENVIRONMENT": "production",
-    "WORLD_FLOW": "request"
+    "WORLD_FLOW": "session"
   },
   "containers": [
     {

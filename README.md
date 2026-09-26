@@ -84,7 +84,7 @@ Docker（Rancher Desktop等）とWorkers Paidプランが必要です。`/new-sa
 
 - コンテナ内でアプリはloopbackにバインドしたままです。`deploy/cloudflare/proxy.mjs`が同一オリジンのリクエストだけをloopbackとして中継します。架空資産のみを扱う隔離サンドボックスであることが前提です。
 - 設定は`wrangler.jsonc`の`vars`、キーはWorker secretで渡します。secretは`pnpm exec wrangler secret put GEMINI_API_KEY`（`WORLD_RP_SIGNING_KEY`も同様）で登録します。値の入力が必要なため、対話できるターミナルで実行してください（入力できない環境では空の値が登録されます）。`AI_MODE=gemini`か`WORLD_MODE=live`のときだけコンテナの外部通信を有効にします。
-- 既定は`BANK_AUTH_MODE=local-demo`（デモログイン）です。`world`にすると、サンドボックスでは初回登録チケットを使わず、最初にWorldでログインした人を口座に登録します（`WORLD_ENROLL_WITHOUT_TICKET`、イメージで有効）。ただしWorld ID 4.0ではOrbのrequest proofが同じactionにつき1人1回しか通らないため、現状の固定actionでは2回目以降のログイン・承認が「Already verified」で失敗します。
+- 既定は`BANK_AUTH_MODE=local-demo`（デモログイン）です。`world`にすると、サンドボックスでは最初のWorldログインで口座にsession IDを紐づけます（`WORLD_ENROLL_WITHOUT_TICKET=true`、イメージで有効）。localhostでも同じ設定を使えます。後のログイン・承認では登録したsession IDを照合します。
 - 公開デモでは誰でもGeminiを呼べるため、AI Studio側で利用上限を設定してください。資産はstub固定で、Base Sepoliaは使いません。
 - 同時に起動するサンドボックスは最大10台です（`max_instances`）。`standard-1`で全台が起動し続けた場合、Workers Paidの込み分を超えると約$0.36/時です。
 
