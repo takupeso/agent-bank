@@ -6,6 +6,79 @@ Next.js・TypeScript・SQLite・Hardhat/Solidityを使用します。TDは非for
 
 このアプリは固定のデモ口座・単一Nodeプロセス・localhost向けです。公開サービスや実資産の銀行として運用するための実装ではありません。
 
+## ETHGlobal Tokyo 2026 submission
+
+### Summary
+
+Agent Bank lets people delegate payments and fund management from their bank deposits to an AI agent, while humans set the rules and the bank verifies every action against them.
+
+Live demo: https://agent-bank-demo.barabara0224.workers.dev (each visitor gets a disposable sandbox with stub assets)
+
+### Team
+
+We are Pacific Meta. We support banks and crypto exchanges in building new businesses and services.
+
+| Name | Role | Social |
+|---|---|---|
+| Takuma Abe | Developer | [@takupesoo](https://x.com/takupesoo) |
+| Toi Kobara | Developer | [@brto_0224](https://x.com/brto_0224) |
+| Go Fukushima | Speaker | [@PacificMeta_Go](https://x.com/PacificMeta_Go) |
+
+### How it works
+
+1. The customer deposits funds as tokenized deposits (TD) on a private chain (local Anvil in this demo).
+2. The customer verifies with World and approves rules for payments and investments.
+3. The agent reads invoices and card statements, then plans payments and investments.
+4. The bank's policy engine checks the approved rules and the balance before each execution.
+5. Payments settle in TD. Funds for investment are exchanged for stablecoins and supplied to DeFi (Aave stub, or Aave on Base Sepolia with test USDC).
+
+Model output alone never adds permissions. Human approval, agent delegation, and bank-side verification are separate steps.
+
+### World integration
+
+- **IDKit**: login and rule approval use `IDKitSessionWidget` with an Orb proof (`proof_of_human`). The bank checks nonce, signal, session ID, and environment, verifies the proof with the Developer Portal, and rejects reused proofs.
+- **World ID for Agents**: `/world-agents` connects an external agent (for example, Claude through the MCP server) to the account using the official event OIDC sandbox. The customer reviews the agent name, account, allowed operations, and expiry, then verifies with World. Only after successful verification does the bank issue a scoped credential once.
+- **Backend validation**: Code + S256 PKCE, state, nonce, RS256 signature, issuer, audience, expiry, acr/amr, and auth_time are checked on the server. The client secret stays in Worker secrets.
+- **Unsuccessful paths**: cancellation, expiry, or failed validation never issues a credential. Requests without a valid credential return 401. Revoked or expired connections stop working.
+
+Details: [docs/world-setup.md](docs/world-setup.md)
+
+### World integration debrief
+
+- **Time to first success**: About 8 hours to the first successful IDKit verification.
+- **Friction**: Our first attempt used Selfie Check, and verification kept failing. We could not identify the cause, and switching to an Orb proof (`proof_of_human`) worked. The World ID for Agents OIDC flow must also start and return on the same HTTPS origin, so we could not test it end to end from localhost.
+- **Missing capability or documentation**: Error codes were hard to map to a cause and a fix. It would also help to state clearly which credentials and features are not yet available in beta.
+- **Most impactful improvement**: Error responses that explain the cause and the next step, such as "this credential is not available in this environment", would have saved us most of the debugging time.
+
+### MultiBaas
+
+We did not use MultiBaas in this project.
+
+### Setup and testing
+
+Requirements: Node.js 24, pnpm, Anvil (Foundry), Python 3, and C/C++ build tools.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm setup:env stub
+pnpm contracts:build
+pnpm db:migrate
+pnpm auth agent
+anvil --host 127.0.0.1 --port 8545 --chain-id 31337 --state .data/anvil.json   # terminal 1
+pnpm dev                                                                         # terminal 2
+```
+
+Open http://127.0.0.1:3000 and continue with the local demo.
+
+```sh
+pnpm test
+pnpm contracts:test
+pnpm typecheck
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 pnpm test:e2e
+```
+
+The Japanese sections below describe the demo steps, Base Sepolia, and deployment in detail.
+
 ## ローカルデモを起動する
 
 Node.js 24、pnpm（`package.json`指定版）、Anvil、Python 3、C/C++ビルドツールが必要です。AnvilはFoundryに含まれます。macOSではXcode Command Line Toolsを利用できます。
