@@ -18,11 +18,17 @@ import {
   assertRuleApproval,
   invalidatePendingApprovals,
 } from "../world/service";
-import type { AuthorizationBinding, Rule, Mail } from "../../shared/domain";
+import type {
+  AuthorizationBinding,
+  Rule,
+  Mail,
+  CardPayment,
+} from "../../shared/domain";
 export type Scope =
   | "read"
   | "propose"
   | "mail"
+  | "card"
   | "payment"
   | "investment"
   | "redemption";
@@ -35,13 +41,14 @@ export type DelegationProposal = {
   instanceId: string;
   authMode: string;
   generation: number;
-  conditions: { mailIds: string[]; scopes: string[] };
+  conditions: { mailIds: string[]; cardIds?: string[]; scopes: string[] };
 };
 type Delegation = {
   id: string;
   version: number;
   enabled: boolean;
   mailIds: string[];
+  cardIds?: string[];
   authorization: AuthorizationBinding;
   rule?: Rule;
 };
@@ -89,6 +96,7 @@ export function proposalBinding(principal: Principal) {
 export function createDelegationProposal(
   principal: Principal,
   mailIds: string[],
+  cardIds?: string[],
 ) {
   requirePrincipal(principal);
   if (principal.role === "agent") assertScope(principal, "propose");
@@ -100,6 +108,19 @@ export function createDelegationProposal(
   ) as Mail[];
   if (ids.some((id) => !samples.some((m) => m.id === id)))
     throw new AuthorizationError(404);
+  const cards =
+    cardIds === undefined
+      ? undefined
+      : [
+          ...new Set(z.array(z.string().min(1)).min(1).max(100).parse(cardIds)),
+        ].sort();
+  if (cards) {
+    const samples = JSON.parse(
+      readFileSync("fixtures/card-payments.json", "utf8"),
+    ) as CardPayment[];
+    if (cards.some((id) => !samples.some((card) => card.id === id)))
+      throw new AuthorizationError(404);
+  }
   return write<DelegationProposal>("bank_delegation_proposals", {
     id: randomUUID(),
     baseVersion:
@@ -110,7 +131,11 @@ export function createDelegationProposal(
     instanceId: instance().id,
     authMode: principal.authMode,
     generation: principal.generation,
-    conditions: { mailIds: ids, scopes: ["read", "propose", "mail"] },
+    conditions: {
+      mailIds: ids,
+      ...(cards ? { cardIds: cards } : {}),
+      scopes: ["read", "propose", "mail", ...(cards ? ["card"] : [])],
+    },
   });
 }
 export function delegationProposal(id: string) {
@@ -142,6 +167,7 @@ export function applyDelegation(
     version: (old?.version ?? 0) + 1,
     enabled: true,
     mailIds: p?.conditions.mailIds ?? [],
+    ...(p?.conditions.cardIds ? { cardIds: p.conditions.cardIds } : {}),
     authorization,
     ...(rule ? { rule } : {}),
   };
@@ -170,9 +196,11 @@ function active(d: Delegation, principal: Principal, scope: Scope) {
     a.generation !== principal.generation ||
     (principal.authMode === "world" &&
       a.approvalMethod !== "world" &&
-      !(a.approvalMethod === "human-confirmation" &&
+      !(
+        a.approvalMethod === "human-confirmation" &&
         !d.rule &&
-        ["mail", "read", "propose"].includes(scope)))
+        ["mail", "card", "read", "propose"].includes(scope)
+      ))
   )
     throw new AuthorizationError(403);
   const p = assertDelegationApproval(a.approvalId, a);
@@ -184,7 +212,10 @@ function active(d: Delegation, principal: Principal, scope: Scope) {
     assertRuleApproval(rule);
   } else if (
     JSON.stringify((p.conditions as { mailIds: string[] }).mailIds) !==
-    JSON.stringify(d.mailIds)
+      JSON.stringify(d.mailIds) ||
+    (!d.rule &&
+      JSON.stringify((p.conditions as { cardIds?: string[] }).cardIds ?? []) !==
+        JSON.stringify(d.cardIds ?? []))
   )
     throw new AuthorizationError(403);
 }
@@ -209,6 +240,21 @@ export function assertScope(principal: Principal, scope: Scope) {
 export function allowedMailIds(principal: Principal) {
   const ref = assertScope(principal, "mail");
   return read<Delegation>("bank_delegations", ref.id)!.mailIds;
+}
+export function allowedCardIds(principal: Principal) {
+  const ref = assertScope(principal, "card");
+  return read<Delegation>("bank_delegations", ref.id)!.cardIds ?? [];
+}
+export function allowedPaymentSourceIds(principal: Principal) {
+  const mailIds = allowedMailIds(principal);
+  const ref = assertScope(principal, "mail");
+  const d = read<Delegation>("bank_delegations", ref.id)!;
+  return [
+    ...mailIds,
+    ...(d.cardIds?.length
+      ? allowedCardIds(principal).map((id) => "card:" + id)
+      : []),
+  ];
 }
 export function authorizations(principal: Principal) {
   requirePrincipal(principal, "human");

@@ -63,13 +63,25 @@ export async function approveApi(
   expect(completed.ok()).toBeTruthy();
   return completed.json();
 }
-export async function openDemoActions(page: Page) {
-  const actions = page.locator("details.agent-tools");
-  const isOpen = await actions.evaluate(
-    (element) => (element as HTMLDetailsElement).open,
-  );
-  if (!isOpen)
-    await page
-      .getByText("Demo actions and common requests", { exact: true })
-      .click();
+export async function sendChat(page: Page, text: string) {
+  await expect(
+    page.getByRole("status", { name: "Agent is preparing a reply" }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("textbox", { name: "Message the agent", exact: true })
+    .fill(text);
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(
+    page.getByRole("status", { name: "Agent is preparing a reply" }),
+  ).toHaveCount(0);
+}
+export async function runDemoEvent(page: Page, type: string, succeeds = true) {
+  const response = await page.request.post("/api/demo/events", {
+    data: { type, requestId: crypto.randomUUID() },
+  });
+  expect(response.ok()).toBe(succeeds);
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("agent-bank:invoices-updated"));
+    window.dispatchEvent(new Event("agent-bank:messages-updated"));
+  });
 }

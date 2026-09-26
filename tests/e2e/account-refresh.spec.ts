@@ -33,8 +33,16 @@ for (const chatFails of [false, true]) {
               : [],
           },
         });
-      if (path === "/api/demo/events") {
-        expect(route.request().postDataJSON().type).toBe("due_date_reached");
+      if (path === "/api/demo/clock") {
+        if (route.request().method() === "GET")
+          return route.fulfill({
+            json: {
+              date: paid ? "2026-09-22" : "2026-09-21",
+              ready: true,
+              stages: [{ date: "2026-09-22" }],
+            },
+          });
+        expect(route.request().postDataJSON().date).toBe("2026-09-22");
         paid = true;
         return route.fulfill({
           json: { id: "run", kind: "payment", status: "completed", steps: [] },
@@ -55,14 +63,15 @@ for (const chatFails of [false, true]) {
       "¥1,000,000",
     );
     await page
-      .getByText("Demo actions and common requests", { exact: true })
+      .getByRole("button", { name: "Open demo controls", exact: true })
       .click();
     await page
       .getByRole("button", {
-        name: "Demo: advance to payment due date",
+        name: "Change date · Sep 22",
         exact: true,
       })
       .click();
+    await page.getByRole("button", { name: "Close demo controls" }).click();
     await expect(deposit.locator(".account-card-header strong")).toHaveText(
       "¥800,000",
     );

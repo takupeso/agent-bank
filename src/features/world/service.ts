@@ -2,7 +2,7 @@ import "server-only";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { sqlite } from "../../server/db";
-import { get, put, instance } from "../../server/records";
+import { all, get, put, instance } from "../../server/records";
 import { conditions, ruleChange } from "../../shared/rule-conditions";
 import type { Proposal, Rule, AuthorizationBinding } from "../../shared/domain";
 import { customerAccountId } from "../../integrations/custody";
@@ -181,7 +181,7 @@ function policy(
     agentId: fixedAgentId,
     scopes:
       operation === "delegation"
-        ? ["read", "propose", "mail"]
+        ? delegationProposal(proposalId!).conditions.scopes
         : conditions.parse(value).id === "payment"
           ? ["payment"]
           : ["investment", "redemption"],
@@ -540,18 +540,37 @@ function applyRule(
       status: "accepted",
       consentId: c.id,
     });
-  put("messages", {
-    id: randomUUID(),
-    role: "assistant",
-    kind: "rule",
-    text:
-      rule.id === "payment"
-        ? "Automatic payments are set up. Eligible invoices will be paid on their due dates."
-        : rule.enabled
-          ? "Automatic investing is set up. I will verify the approved terms and start investing."
-          : "Automatic investing is paused.",
-    data: { rule },
-  });
+  if (
+    !c.policy?.investmentConditions?.investmentAllocations &&
+    !normalized.investmentAllocations
+  )
+    put("messages", {
+      id: randomUUID(),
+      role: "assistant",
+      kind: "rule",
+      text:
+        rule.id === "payment"
+          ? "Automatic payments are set up. Eligible invoices will be paid on their due dates."
+          : rule.enabled
+            ? "Automatic investing is set up. I will verify the approved terms and start investing."
+            : "Automatic investing is paused.",
+      data: { rule },
+    });
+  if (normalized.investmentAllocations) {
+    for (const row of all<import("../../shared/domain").Message>("messages")) {
+      if (
+        row.kind === "payment-plan" &&
+        (row.data?.proposal as Proposal | undefined)?.id === proposalId
+      )
+        put("messages", {
+          ...row,
+          data: {
+            ...row.data,
+            proposal: get<Proposal>("proposals", proposalId!),
+          },
+        });
+    }
+  }
   const delegation = applyDelegation(undefined, binding, rule);
   return { rule, delegation };
 }

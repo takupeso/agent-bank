@@ -20,12 +20,12 @@ export const apiPolicy: ReadonlyArray<{
   { method: "POST", path: /^\/api\/auth\/logout$/, role: "human" },
   {
     method: "GET",
-    path: /^\/api\/(ai|dashboard|investments|invoices|cashflow|rules|delegations|chat\/messages|runs\/[^/]+)$/,
+    path: /^\/api\/(demo\/clock|ai|dashboard|investments|invoices|cashflow|rules|delegations|chat\/messages|runs\/[^/]+)$/,
     role: "human",
   },
   {
     method: "POST",
-    path: /^\/api\/(world|chat\/messages|demo\/(events|reset|approvals)|redemptions|delegations\/(proposals|confirm)|delegations\/[^/]+\/revoke|rules\/[^/]+\/disable)$/,
+    path: /^\/api\/(world|chat\/messages|demo\/(events|reset|approvals|clock)|redemptions|delegations\/(proposals|confirm)|delegations\/[^/]+\/revoke|rules\/[^/]+\/disable)$/,
     role: "human",
   },
   { method: "PATCH", path: /^\/api\/rules$/, role: "human" },

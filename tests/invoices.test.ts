@@ -52,7 +52,7 @@ test("payment consent schedules both explicitly proposed invoice recipients", as
     number: "A-1",
     recipientId: "aoba",
     amountJpy: "200000",
-    dueAt: "2026-09-22T03:00:00.000Z",
+    dueAt: "2026-10-01T03:00:00.000Z",
     recurrenceKey: "aoba-services",
     status: "scheduled" as const,
   };

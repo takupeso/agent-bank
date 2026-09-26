@@ -7,7 +7,8 @@ type Flow = {
   id: string;
   from: Place;
   to: Place;
-  amount: string;
+  amount: bigint;
+  unit: "JPY" | "USDC";
   caption: string;
   tone: "pay" | "invest";
 };
@@ -16,8 +17,10 @@ const compact = new Intl.NumberFormat("en-US", {
   notation: "compact",
   maximumFractionDigits: 1,
 });
-const yenShort = (value: bigint) => `¥${compact.format(value)}`;
-const usdcShort = (units: bigint) => `${compact.format(units / 1000000n)} USDC`;
+const short = (f: Flow) =>
+  f.unit === "JPY"
+    ? `¥${compact.format(f.amount)}`
+    : `${compact.format(f.amount / 1000000n)} USDC`;
 
 // Each operation produces several ledger rows; show one representative row per hop.
 function toFlow(m: AccountMovement): Flow | undefined {
@@ -27,7 +30,8 @@ function toFlow(m: AccountMovement): Flow | undefined {
       id: m.id,
       from: "Deposit",
       to: "Payee",
-      amount: yenShort(amount),
+      amount,
+      unit: "JPY",
       caption: "Agent paid an invoice within your limits",
       tone: "pay",
     };
@@ -36,8 +40,9 @@ function toFlow(m: AccountMovement): Flow | undefined {
       id: m.id,
       from: "Deposit",
       to: "Wallet",
-      amount: yenShort(amount),
-      caption: "Agent reserved surplus TD and received USDC",
+      amount,
+      unit: "JPY",
+      caption: "Agent moved TD into investment and received USDC",
       tone: "invest",
     };
   if (m.id.endsWith(":aave-in"))
@@ -45,7 +50,8 @@ function toFlow(m: AccountMovement): Flow | undefined {
       id: m.id,
       from: "Wallet",
       to: "Aave",
-      amount: usdcShort(amount),
+      amount,
+      unit: "USDC",
       caption: "Agent supplied USDC to Aave",
       tone: "invest",
     };
@@ -54,7 +60,8 @@ function toFlow(m: AccountMovement): Flow | undefined {
       id: m.id,
       from: "Aave",
       to: "Wallet",
-      amount: usdcShort(amount),
+      amount,
+      unit: "USDC",
       caption: "Agent withdrew USDC from Aave",
       tone: "invest",
     };
@@ -63,14 +70,21 @@ function toFlow(m: AccountMovement): Flow | undefined {
       id: m.id,
       from: "Wallet",
       to: "Deposit",
-      amount: yenShort(amount),
+      amount,
+      unit: "JPY",
       caption: "Invested funds returned to your deposit",
       tone: "invest",
     };
 }
-const stage = (f: Flow) =>
-  ["Payee", "Wallet", "Aave", "Wallet", "Deposit"].indexOf(f.to) +
-  (f.from === "Aave" ? 1 : 0);
+// Play hops in the order money actually travels: withdrawals fund payments, then new investments.
+const hops = [
+  "Aave>Wallet",
+  "Wallet>Deposit",
+  "Deposit>Payee",
+  "Deposit>Wallet",
+  "Wallet>Aave",
+];
+const stage = (f: Flow) => hops.indexOf(`${f.from}>${f.to}`);
 
 const STEP_MS = 1800;
 const LINGER_MS = 2200;
@@ -82,6 +96,12 @@ export function MoneyFlow({ movements }: { movements: AccountMovement[] }) {
   const [active, setActive] = useState<Flow>();
   const [leaving, setLeaving] = useState(false);
   const [runKey, setRunKey] = useState(0);
+  const toast = useRef<HTMLDivElement>(null);
+  // A popover joins the top layer, so the toast stays visible above the demo drawer.
+  useEffect(() => {
+    if (active && !toast.current?.matches(":popover-open"))
+      toast.current?.showPopover();
+  }, [active]);
 
   const playNext = useCallback(() => {
     const next = queue.current.shift();
@@ -109,10 +129,15 @@ export function MoneyFlow({ movements }: { movements: AccountMovement[] }) {
     }
     const fresh = movements.filter((m) => !seen.current!.has(m.id));
     seen.current = ids;
-    const flows = fresh
+    const flows: Flow[] = [];
+    for (const flow of fresh
       .map(toFlow)
       .filter((f): f is Flow => !!f)
-      .sort((a, b) => stage(a) - stage(b));
+      .sort((a, b) => stage(a) - stage(b))) {
+      const same = flows.find((f) => f.from === flow.from && f.to === flow.to);
+      if (same) same.amount += flow.amount;
+      else flows.push(flow);
+    }
     if (!flows.length) return;
     queue.current.push(...flows);
     if (timer.current === undefined || leaving) {
@@ -124,6 +149,8 @@ export function MoneyFlow({ movements }: { movements: AccountMovement[] }) {
   if (!active) return null;
   return (
     <div
+      ref={toast}
+      popover="manual"
       className={`flow-toast ${active.tone}${leaving ? " leaving" : ""}`}
       role="status"
     >
@@ -136,7 +163,7 @@ export function MoneyFlow({ movements }: { movements: AccountMovement[] }) {
         <span>{active.to}</span>
       </div>
       <p>
-        <strong>{active.amount}</strong>
+        <strong>{short(active)}</strong>
         {active.caption}
       </p>
     </div>

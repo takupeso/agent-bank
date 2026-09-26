@@ -253,11 +253,7 @@ export const evidenceSteps = (evidence: Evidence[]): Run["steps"] =>
     hash: e.hash,
     block: e.block,
   }));
-export async function supplyAndDeposit(
-  id: string,
-  units: string,
-  guard: () => void,
-) {
+export async function fund(id: string, units: string, guard: () => void) {
   const customer = signer(customerAccountId);
   const evidence: Evidence[] = [];
   evidence.push(
@@ -270,6 +266,16 @@ export async function supplyAndDeposit(
       guard,
     ),
   );
+  return { id, steps: evidenceSteps(evidence) };
+}
+export async function deposit(
+  id: string,
+  units: string,
+  guard: () => void,
+  orderIds = [id],
+) {
+  const customer = signer(customerAccountId);
+  const evidence: Evidence[] = [];
   evidence.push(
     await execute(
       id,
@@ -290,10 +296,20 @@ export async function supplyAndDeposit(
       guard,
     ),
   );
-  sqlite
-    .prepare("UPDATE public_orders SET status='invested' WHERE id=?")
-    .run(id);
+  for (const orderId of orderIds)
+    sqlite
+      .prepare("UPDATE public_orders SET status='invested' WHERE id=?")
+      .run(orderId);
   return { id, steps: evidenceSteps(evidence) };
+}
+export async function supplyAndDeposit(
+  id: string,
+  units: string,
+  guard: () => void,
+) {
+  const funding = await fund(id, units, guard);
+  const supplied = await deposit(id, units, guard);
+  return { id, steps: [...funding.steps, ...supplied.steps] };
 }
 export async function balances() {
   publicTables();

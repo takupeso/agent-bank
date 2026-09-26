@@ -1,36 +1,32 @@
 "use client";
 import { apiFetch, apiPost } from "../api-client";
 import { WorldApproval, type WorldRequest } from "../world-approval";
-import { DemoEvent } from "./demo-event";
+import { DemoControls } from "../demo-controls";
+import { PaymentPlanCard } from "./payment-plan-card";
 import { Conditions, ProposalCard } from "./rule-card";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Message, Invoice, Mail, Proposal, Rule } from "@/shared/domain";
-const journey = [
-  "Email access",
-  "Approve terms",
-  "Auto-pay",
-  "Invest",
-  "Redeem",
-] as const;
+const journey = ["Access", "Approve", "Invest", "Pay", "Redeem"] as const;
 function journeyProgress(messages: Message[]) {
   const has = (test: (m: Message) => boolean) => messages.some(test);
-  const lastInvested = messages.findLastIndex(
-    (m) => m.kind === "execution" && m.text.startsWith("Started investing"),
+  const lastInvested = messages.findLastIndex((m) =>
+    m.text.includes("Started investing"),
   );
   const lastRedeemed = messages.findLastIndex((m) =>
     m.text.startsWith("Investments redeemed"),
   );
   return [
-    has((m) => m.kind === "invoices"),
-    has((m) => m.kind === "rule"),
-    has((m) => m.text.startsWith("Paid ¥")),
+    has((m) => m.kind === "payment-plan" || m.kind === "invoices"),
+    has((m) => m.kind === "rule") || lastInvested >= 0,
     lastInvested >= 0,
+    has((m) => m.text.startsWith("Paid ¥")),
     lastInvested >= 0 && lastRedeemed > lastInvested,
   ];
 }
+const grantAccess =
+  "I grant access to my card payment information and invoices.";
 export function AgentPanel() {
   const conversation = useRef<HTMLElement>(null);
-  const tools = useRef<HTMLDetailsElement>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [text, setText] = useState("");
@@ -47,14 +43,33 @@ export function AgentPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
-    const load = () =>
-      apiFetch("/api/chat/messages").then(async (r) => {
-        if (r.ok) setMessages(await r.json());
-        setLoaded(true);
+    let generation = 0;
+    const refresh = () => {
+      const attempt = ++generation;
+      void apiFetch("/api/chat/messages").then(async (r) => {
+        if (r.ok) {
+          const next = await r.json();
+          if (attempt === generation) setMessages(next);
+        }
+        if (attempt === generation) setLoaded(true);
       });
-    void load();
-    window.addEventListener("agent-bank:demo-reset", load);
-    return () => window.removeEventListener("agent-bank:demo-reset", load);
+    };
+    const reset = () => {
+      generation++;
+      setMessages([]);
+      setApproval(undefined);
+      setMailPermission(undefined);
+      setError("");
+      refresh();
+    };
+    refresh();
+    window.addEventListener("agent-bank:messages-updated", refresh);
+    window.addEventListener("agent-bank:demo-reset", reset);
+    return () => {
+      generation++;
+      window.removeEventListener("agent-bank:messages-updated", refresh);
+      window.removeEventListener("agent-bank:demo-reset", reset);
+    };
   }, []);
   useLayoutEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -70,9 +85,9 @@ export function AgentPanel() {
   }, [messages, pendingText]);
   async function send(value: string) {
     const proposalId = (
-      messages.filter((m) => m.kind === "proposal").at(-1)?.data?.proposal as
-        | Proposal
-        | undefined
+      messages
+        .filter((m) => m.kind === "proposal" || m.kind === "payment-plan")
+        .at(-1)?.data?.proposal as Proposal | undefined
     )?.id;
     const startedAt = Date.now();
     setPendingText(value);
@@ -87,15 +102,23 @@ export function AgentPanel() {
           proposalId,
         }),
       });
-      if (!r.ok)
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
         throw new Error(
-          "Unable to complete the operation. Check your settings and execution records.",
+          body.error ??
+            "Unable to complete the operation. Check your settings and execution records.",
         );
+      }
       const remainingDelay = 1000 - (Date.now() - startedAt);
       if (remainingDelay > 0)
         await new Promise((resolve) => setTimeout(resolve, remainingDelay));
       const next: Message[] = await r.json();
       setMessages(next);
+      if (
+        next.at(-1)?.kind !== "approval-request" &&
+        next.at(-1)?.kind !== "mail-permission-request"
+      )
+        document.querySelector<HTMLDialogElement>(".demo-drawer")?.close();
       const last = next.at(-1);
       setApproval(
         last?.kind === "approval-request"
@@ -112,6 +135,7 @@ export function AgentPanel() {
           : undefined,
       );
       window.dispatchEvent(new Event("agent-bank:invoices-updated"));
+      window.dispatchEvent(new Event("agent-bank:rules-updated"));
       setText("");
     } catch (e) {
       setError(String(e));
@@ -120,59 +144,42 @@ export function AgentPanel() {
       setBusy(false);
     }
   }
-  function hasUnacceptedProposal(kind: Proposal["kind"]) {
-    let proposalIndex = -1;
-    let ruleIndex = -1;
-    messages.forEach((m, index) => {
-      if (
-        m.kind === "proposal" &&
-        (m.data?.proposal as Proposal | undefined)?.kind === kind
-      )
-        proposalIndex = index;
-      if (m.kind === "rule" && (m.data?.rule as Rule | undefined)?.id === kind)
-        ruleIndex = index;
-    });
-    return proposalIndex > ruleIndex;
-  }
+  const locked = busy || !!approval || !!mailPermission;
   const progress = journeyProgress(messages);
   const current = progress.indexOf(false);
-  const locked = busy || !!approval || !!mailPermission;
-  const refreshMessages = () => {
-    window.dispatchEvent(new Event("agent-bank:invoices-updated"));
-    apiFetch("/api/chat/messages").then(async (r) => {
-      if (r.ok) setMessages(await r.json());
-    });
-  };
+  const pendingPlan = messages.some(
+    (m) =>
+      m.kind === "payment-plan" &&
+      (m.data?.proposal as Proposal)?.status === "proposed",
+  );
   const nextStep = !loaded
     ? undefined
     : current === 0
       ? {
-          label: "Allow email access",
-          hint: "The agent reads only the sample emails you approve.",
-          run: () =>
-            send("I allow access to my emails. Please check the invoices."),
+          label: "Grant card and invoice access",
+          hint: "The agent reads only the sample statements you approve.",
+          run: () => send(grantAccess),
         }
-      : current === 1 && hasUnacceptedProposal("payment")
+      : current === 1 && pendingPlan
         ? {
-            label: "Review and approve terms",
-            hint: "Approve payment and investment limits in one step.",
-            run: () => send("Confirm these settings"),
+            label: "Approve the plan",
+            hint: "Payments stay scheduled while the deposit is invested.",
+            run: () => send("Yes"),
           }
-        : current === 2
-          ? { label: "Simulate the payment due date", hint: "", run: undefined }
-          : current === 3
+        : current === 3 || (current === 4 && !progress[3])
+          ? {
+              label: "Move to the next payment date",
+              hint: "Watch the agent withdraw and pay on time.",
+              run: () =>
+                document.querySelector<HTMLButtonElement>(".demo-fab")?.click(),
+            }
+          : current === 4
             ? {
-                label: "Invest available funds",
-                hint: "Funds for payments and the safety buffer stay put.",
-                run: () => send("Invest my available funds"),
+                label: "Redeem investments",
+                hint: "Return invested funds to your deposit account.",
+                run: () => send("Redeem all investments to TD"),
               }
-            : current === 4
-              ? {
-                  label: "Redeem investments",
-                  hint: "Return invested funds to your deposit account.",
-                  run: () => send("Redeem all investments to TD"),
-                }
-              : undefined;
+            : undefined;
   return (
     <aside id="agent-panel" className="agent-panel" aria-label="Agent chat">
       <header className="agent-panel-header">
@@ -252,6 +259,13 @@ export function AgentPanel() {
                   </div>
                 );
               })}
+            {m.kind === "payment-plan" && (
+              <PaymentPlanCard
+                proposal={m.data?.proposal as Proposal}
+                invoices={m.data?.invoices as Invoice[]}
+                depositJpy={m.data?.depositJpy as string}
+              />
+            )}
             {m.kind === "proposal" && (
               <ProposalCard
                 proposal={m.data?.proposal as Proposal}
@@ -293,114 +307,50 @@ export function AgentPanel() {
         <div className="agent-next">
           <div>
             <span>Next step</span>
-            {nextStep.hint && <p>{nextStep.hint}</p>}
+            <p>{nextStep.hint}</p>
           </div>
-          {nextStep.run ? (
-            <button
-              type="button"
-              aria-label={`Next step: ${nextStep.label}`}
-              disabled={locked}
-              onClick={() => {
-                setError("");
-                void nextStep.run!();
-              }}
-            >
-              {nextStep.label}
-            </button>
-          ) : (
-            <DemoEvent
-              onError={setError}
-              type="due_date_reached"
-              label={nextStep.label}
-              onComplete={refreshMessages}
-            />
-          )}
+          <button
+            type="button"
+            aria-label={`Next step: ${nextStep.label}`}
+            disabled={locked}
+            onClick={() => {
+              setError("");
+              void nextStep.run();
+            }}
+          >
+            {nextStep.label}
+          </button>
         </div>
       )}
-      <details ref={tools} className="agent-tools">
-        <summary>Demo actions and common requests</summary>
-        <div
-          className="quick-actions"
-          onClick={(event) => {
-            if (
-              (event.target as HTMLElement).closest("button") &&
-              tools.current
-            ) {
-              tools.current.open = false;
-              setError("");
-            }
-          }}
-        >
+      <div className="chat-plan-actions">
+        {pendingPlan && !nextStep && (
           <button
             disabled={busy || !!approval || !!mailPermission}
-            onClick={() =>
-              send("I allow access to my emails. Please check the invoices.")
-            }
+            onClick={() => void send("Yes")}
           >
-            I allow access to my emails. Please check the invoices.
+            Yes
           </button>
-          <button
-            disabled={
-              busy ||
-              !!approval ||
-              !!mailPermission ||
-              !hasUnacceptedProposal("payment")
-            }
-            onClick={() => send("Confirm these settings")}
-          >
-            Confirm payment setup
-          </button>
-          <DemoEvent
-            onError={setError}
-            type="due_date_reached"
-            label="Demo: advance to payment due date"
-            onComplete={() => {
-              window.dispatchEvent(new Event("agent-bank:invoices-updated"));
-              apiFetch("/api/chat/messages").then(async (r) => {
-                if (r.ok) {
-                  setMessages(await r.json());
-                }
-              });
-            }}
-          />
-          <button
-            disabled={busy || !!approval || !!mailPermission}
-            onClick={() => send("Invest my available funds")}
-          >
-            Invest my available funds
-          </button>
-          <button
-            disabled={
-              busy ||
-              !!approval ||
-              !!mailPermission ||
-              !hasUnacceptedProposal("investment")
-            }
-            onClick={() => send("Confirm these settings")}
-          >
-            Confirm investment setup
-          </button>
-          <DemoEvent
-            onError={setError}
-            type="surplus_check"
-            label="Demo: check available funds"
-            onComplete={() => {
-              window.dispatchEvent(new Event("agent-bank:invoices-updated"));
-              apiFetch("/api/chat/messages").then(async (r) => {
-                if (r.ok) {
-                  setMessages(await r.json());
-                }
-              });
-            }}
-          />
-          <button
-            disabled={busy || !!approval || !!mailPermission}
-            onClick={() => send("Redeem all investments to TD")}
-          >
-            Redeem all investments to TD
-          </button>
-        </div>
-      </details>
+        )}
+      </div>
+      <DemoControls
+        onGrantAccess={() =>
+          void send(
+            "I grant access to my card payment information and invoices.",
+          )
+        }
+        onRedeem={() => void send("Redeem all investments to TD")}
+        chatBusy={busy || !!approval || !!mailPermission}
+        onChat={() => {
+          const plan = messages.filter((m) => m.kind === "payment-plan").at(-1);
+          if (!plan)
+            void send(
+              "I grant access to my card payment information and invoices.",
+            );
+          else if ((plan.data?.proposal as Proposal)?.status === "proposed")
+            void send("Yes");
+          else document.getElementById("chat-input")?.focus();
+        }}
+      />
       <form
         className="agent-composer"
         onSubmit={(e) => {
@@ -408,10 +358,10 @@ export function AgentPanel() {
           void send(text);
         }}
       >
-        <label htmlFor="chat-input">Message the agent</label>
         <div className="composer">
           <input
             id="chat-input"
+            aria-label="Message the agent"
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Ask about payments, investments, or rules…"

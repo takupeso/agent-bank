@@ -42,12 +42,16 @@ type RedemptionRequest = {
   expiresAt: number;
   status: "pending" | "executing" | "completed";
 };
-export function createRedemptionRequest(principal: Principal) {
+export function createRedemptionRequest(
+  principal: Principal,
+  orderIds?: string[],
+) {
   requirePrincipal(principal, "human");
   const orders = all<Investment>("investment_orders").filter(
-    (o) => o.status === "invested",
+    (o) => o.status === "invested" && (!orderIds || orderIds.includes(o.id)),
   );
-  if (!orders.length) throw new Error("No invested position");
+  if (!orders.length || (orderIds && orders.length !== new Set(orderIds).size))
+    throw new Error("No matching invested position");
   return put<RedemptionRequest>("redemption_requests", {
     id: randomUUID(),
     accountId: principal.accountId,

@@ -48,3 +48,38 @@ export function withdrawAndReturn(operationId: string, units: string) {
     });
   })();
 }
+
+export function fund(operationId: string, units: string) {
+  return sqlite.transaction(() => {
+    if (get("execution_steps", operationId + ":fund")) return;
+    const s = instance();
+    const amount = BigInt(units);
+    if (amount <= 0n || BigInt(s.treasuryUsdc as string) < amount)
+      throw new Error("Stub inventory insufficient");
+    s.treasuryUsdc = (BigInt(s.treasuryUsdc as string) - amount).toString();
+    s.looseUsdc = (BigInt((s.looseUsdc as string) ?? "0") + amount).toString();
+    save(s);
+    put("execution_steps", {
+      id: operationId + ":fund",
+      units,
+      action: "fund",
+    });
+  })();
+}
+export function deposit(operationId: string, units: string) {
+  return sqlite.transaction(() => {
+    if (get("execution_steps", operationId + ":deposit")) return;
+    const s = instance();
+    const amount = BigInt(units);
+    if (amount <= 0n || BigInt((s.looseUsdc as string) ?? "0") < amount)
+      throw new Error("Stub token balance insufficient");
+    s.looseUsdc = (BigInt(s.looseUsdc as string) - amount).toString();
+    s.positionUsdc = (BigInt(s.positionUsdc as string) + amount).toString();
+    save(s);
+    put("execution_steps", {
+      id: operationId + ":deposit",
+      units,
+      action: "deposit",
+    });
+  })();
+}

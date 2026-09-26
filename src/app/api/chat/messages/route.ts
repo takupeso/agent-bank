@@ -4,6 +4,21 @@ import { all } from "@/server/records";
 import { checkRequest, failure } from "@/server/http";
 export const dynamic = "force-dynamic";
 function chatFailure(e: unknown) {
+  if (
+    e instanceof Error &&
+    [
+      "Reset the demo before creating a new payment plan",
+      "Start a fresh demo before the payment dates",
+    ].includes(e.message)
+  )
+    return Response.json(
+      {
+        error:
+          "Redeem any remaining investments, then reset the demo on Home to start this plan.",
+      },
+      { status: 400 },
+    );
+
   if (e instanceof Error && e.message === "Initialize demo first") {
     return Response.json(
       {

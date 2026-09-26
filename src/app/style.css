@@ -1587,6 +1587,9 @@ header p {
 /* Money flow toast */
 .flow-toast {
   position: fixed;
+  inset: auto;
+  margin: 0;
+  border: 0;
   bottom: 24px;
   right: calc(460px + 24px);
   z-index: 20;
@@ -1779,4 +1782,123 @@ header p {
 }
 .approval-technical .approval-fields {
   margin-top: 4px;
+}
+
+.chat-plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 14px;
+  flex-shrink: 0;
+}
+.chat-plan-actions button {
+  font-size: 12px;
+}
+.agent-panel form:has(#chat-input) {
+  padding-right: 86px;
+}
+.demo-fab {
+  position: fixed;
+  z-index: 35;
+  right: 22px;
+  bottom: 22px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  box-shadow: 0 4px 18px #173b7d33;
+}
+.demo-drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  margin: 0;
+  width: min(460px, 100vw);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  border: 0;
+  border-left: 1px solid var(--line);
+  padding: 0;
+  background: white;
+  color: var(--ink);
+}
+.demo-drawer::backdrop {
+  background: #12264d55;
+}
+.demo-drawer-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: white;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  padding: 24px;
+}
+.demo-drawer-header h2 {
+  margin: 0 0 8px;
+}
+.demo-drawer-header p {
+  margin: 0;
+  font-size: 13px;
+}
+.demo-drawer-header button {
+  flex-shrink: 0;
+}
+.demo-drawer-body {
+  padding: 24px;
+}
+.demo-actions {
+  display: grid;
+  gap: 16px;
+}
+.demo-actions button {
+  min-height: 48px;
+}
+.demo-drawer-header {
+  justify-content: space-between;
+  align-items: center;
+}
+.payment-plan-card h3 {
+  margin-top: 0;
+}
+.plan-payment-sources {
+  padding: 0;
+  list-style: none;
+}
+.plan-payment-sources li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.plan-payment-sources span {
+  grid-column: 1;
+  font-size: 11px;
+  color: var(--muted);
+}
+.plan-payment-sources strong {
+  grid-column: 2;
+  grid-row: span 2;
+}
+.plan-investment-dates {
+  list-style: none;
+  margin: 14px 0;
+  padding: 12px;
+  background: #f4f7fc;
+}
+.plan-investment-dates li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px;
+  padding: 10px 0;
+}
+.plan-investment-dates small {
+  display: block;
+  grid-column: 1 / -1;
+  color: var(--muted);
 }

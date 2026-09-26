@@ -121,8 +121,10 @@ export default function Home() {
         const result = await r.json();
         throw new Error(result.error ?? "Unable to initialize the demo");
       }
-      window.dispatchEvent(new Event("agent-bank:demo-reset"));
       await load();
+      window.dispatchEvent(new Event("agent-bank:demo-reset"));
+      window.dispatchEvent(new Event("agent-bank:invoices-updated"));
+      window.dispatchEvent(new Event("agent-bank:rules-updated"));
     } catch (e) {
       setError(String(e));
     } finally {
@@ -194,13 +196,6 @@ export default function Home() {
           subtitle={data.mode === "sepolia" ? "Base Sepolia" : "Local stub"}
           balance={`${formatUsdc(data.positionUsdc ?? "0")} USDC`}
           movements={forAccount("aave")}
-        />
-        <AccountCard
-          title="Morpho"
-          tone="morpho"
-          subtitle="Not connected"
-          balance="—"
-          movements={[]}
         />
       </div>
     </>

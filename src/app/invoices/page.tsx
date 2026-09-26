@@ -37,7 +37,8 @@ export default function Invoices() {
           <span className={`badge ${i.status}`}>
             {i.status === "paid" ? "Paid" : "Scheduled"}
           </span>
-          <h2>{i.issuer}</h2>
+          <h2>{i.source === "card" ? i.cardName : i.issuer}</h2>
+          {i.source === "card" && <p>Credit card · •••• {i.cardLast4}</p>}
           <strong>¥{BigInt(i.amountJpy).toLocaleString("en-US")}</strong>
           <p>
             Due:{" "}
@@ -45,13 +46,17 @@ export default function Invoices() {
               timeZone: "Asia/Tokyo",
             })}
           </p>
-          <details>
-            <summary>View source email</summary>
-            <p>{data.emails.find((m) => m.id === i.emailId)?.body}</p>
-          </details>
+          {i.source !== "card" && (
+            <details>
+              <summary>View source email</summary>
+              <p>{data.emails.find((m) => m.id === i.emailId)?.body}</p>
+            </details>
+          )}
           <div className="invoice-attachment">
             <div>
-              <strong>Attached invoice</strong>
+              <strong>
+                {i.source === "card" ? "Card statement" : "Attached invoice"}
+              </strong>
               <p>{i.number}</p>
             </div>
             {invoiceDocument(i) ? (
@@ -63,14 +68,18 @@ export default function Invoices() {
                 View invoice
               </button>
             ) : (
-              <p>A PDF is not available for this invoice.</p>
+              <p>
+                {i.source === "card"
+                  ? "Demo card payment information"
+                  : "A PDF is not available for this invoice."}
+              </p>
             )}
           </div>
         </section>
       ))}
       {!data.invoices.length && (
         <section className="panel">
-          Eligible invoices appear here once you approve the payment terms.
+          Invoice and card payments appear here once you approve the plan.
         </section>
       )}
       <dialog

@@ -1,4 +1,24 @@
+export type InvestmentAllocation = {
+  id: string;
+  amountJpy: string;
+  paymentId?: string;
+  dueAt?: string;
+};
+export type CardPayment = {
+  id: string;
+  cardName: string;
+  last4: string;
+  issuer: string;
+  number: string;
+  recipientId: "card";
+  amountJpy: string;
+  dueAt: string;
+  recurrenceKey: string;
+};
 export type Invoice = {
+  source?: "invoice" | "card";
+  cardName?: string;
+  cardLast4?: string;
   id: string;
   emailId: string;
   issuer: string;
@@ -31,7 +51,7 @@ export type Message = {
   data?: Record<string, unknown>;
 };
 export type PaymentRecipientLimit = {
-  recipientId: "aoba" | "sakura";
+  recipientId: "aoba" | "sakura" | "card";
   maxPaymentJpy: string;
   monthlyLimitJpy: string;
 };
@@ -46,6 +66,7 @@ export type AuthorizationBinding = {
   scopes: string[];
 };
 export type Rule = {
+  investmentAllocations?: InvestmentAllocation[];
   authorization?: AuthorizationBinding;
   worldApprovalId?: string;
   id: "payment" | "investment";
@@ -93,6 +114,7 @@ export type Intent = {
   signature: `0x${string}`;
 };
 export type Run = {
+  error?: string;
   sourceId?: string;
   ruleVersion?: number;
   id: string;

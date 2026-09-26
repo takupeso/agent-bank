@@ -55,7 +55,13 @@ export type Challenge = {
 };
 const yen = (value: string) => `¥${BigInt(value).toLocaleString("en-US")}`;
 const recipientName = (id: string) =>
-  id === "aoba" ? "Aoba Design" : id === "sakura" ? "Sakura Office" : id;
+  id === "aoba"
+    ? "Aoba Design"
+    : id === "sakura"
+      ? "Sakura Office"
+      : "Harp Card";
+const recipientAccount = (id: string) =>
+  id === "aoba" ? "0000001" : id === "sakura" ? "0000002" : "0000003";
 const mailName = (id: string) =>
   id === "aoba-mail"
     ? "Aoba Design sample email"
@@ -188,6 +194,7 @@ export function WorldApproval({
   const names: Record<string, string> = {
     read: "Read banking data",
     propose: "Propose terms",
+    card: "Read selected card statements",
     mail: "Read selected emails",
     payment: "Payments within approved terms",
     investment: "Investments within approved terms",
@@ -219,7 +226,7 @@ export function WorldApproval({
               <p className="approval-line">
                 {c.enabled ? "" : "Pause automatic payments. "}Payees:{" "}
                 {recipients.map((r) => recipientName(r.recipientId)).join(", ")}{" "}
-                · paid on the invoice due date
+                · paid on the due date
               </p>
               <ul className="approval-limits">
                 {recipients.map((r) => (
@@ -295,8 +302,7 @@ export function WorldApproval({
               recipients.map((r) => (
                 <p className="approval-caption" key={r.recipientId}>
                   {recipientName(r.recipientId)}: Agent Bank · Harp Branch ·
-                  Deposit account{" "}
-                  {r.recipientId === "aoba" ? "0000001" : "0000002"} (demo) ·
+                  Deposit account {recipientAccount(r.recipientId)} (demo) ·
                   internal transfer, 1 TD = ¥1
                 </p>
               ))}

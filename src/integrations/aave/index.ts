@@ -10,6 +10,8 @@ export function mode() {
 }
 export async function preflight(units: string) {
   if (mode() === "sepolia") await sepolia.preflight(BigInt(units));
+  else if (BigInt(instance().treasuryUsdc as string) < BigInt(units))
+    throw new Error("Stub inventory insufficient");
 }
 export function recordOrder(id: string, units: string, lockId: string) {
   if (mode() === "sepolia")
@@ -76,4 +78,40 @@ export async function verifyReturn(evidence: sepolia.Evidence | undefined) {
 }
 export function markRedeemed(orderId: string) {
   if (mode() === "sepolia") sepolia.markRedeemed(orderId);
+}
+
+export async function fund(id: string, units: string, guard: () => void) {
+  if (mode() === "sepolia") return sepolia.fund(id, units, guard);
+  await serialized(() => {
+    guard();
+    stub.fund(id, units);
+  });
+  return {
+    id,
+    steps: [
+      {
+        label: "Simulated token account funding",
+        mode: "stub" as const,
+        ref: id,
+      },
+    ],
+  };
+}
+export async function deposit(
+  id: string,
+  units: string,
+  guard: () => void,
+  orderIds: string[],
+) {
+  if (mode() === "sepolia") return sepolia.deposit(id, units, guard, orderIds);
+  await serialized(() => {
+    guard();
+    stub.deposit(id, units);
+  });
+  return {
+    id,
+    steps: [
+      { label: "Simulated Aave deposit", mode: "stub" as const, ref: id },
+    ],
+  };
 }

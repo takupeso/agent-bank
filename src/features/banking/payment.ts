@@ -1,5 +1,5 @@
 import { type Principal } from "../../server/auth";
-import { assertScope, allowedMailIds } from "../delegations/service";
+import { assertScope, allowedPaymentSourceIds } from "../delegations/service";
 import { assertRuleApproval } from "../world/service";
 import "server-only";
 import { parseAbi, parseEventLogs } from "viem";
@@ -24,7 +24,11 @@ export function monthlyUsed(recipientId: string, time: string) {
     )
     .reduce((sum, p) => sum + BigInt(p.amountJpy), 0n);
 }
-export async function payDue(principal: Principal, requestId: string) {
+export async function payDue(
+  principal: Principal,
+  requestId: string,
+  useCurrentClock = false,
+) {
   const delegation = assertScope(principal, "payment");
   const initialRule = get<Rule>("rules", "payment");
   if (!initialRule?.enabled) throw new Error("No authorized rule");
@@ -43,7 +47,7 @@ export async function payDue(principal: Principal, requestId: string) {
     assertRuleApproval(rule);
   };
   assertScope(principal, "mail");
-  const mailIds = allowedMailIds(principal);
+  const mailIds = allowedPaymentSourceIds(principal);
   const existing = get<Run>("runs", requestId);
   if (existing) {
     if (existing.kind !== "payment") throw new Error("Request kind mismatch");
@@ -60,8 +64,10 @@ export async function payDue(principal: Principal, requestId: string) {
   let submitted = false;
   try {
     const s = instance();
-    s.clock = "2026-09-22T03:00:00.000Z";
-    save(s);
+    if (!useCurrentClock && s.clock < "2026-10-01T03:00:00.000Z") {
+      s.clock = "2026-10-01T03:00:00.000Z";
+      save(s);
+    }
     const due = all<Invoice>("invoices")
       .filter(
         (i) =>
@@ -129,7 +135,7 @@ export async function payDue(principal: Principal, requestId: string) {
         put("runs", run);
         const operationId = op(s.id + ":" + invoice.id + ":payment");
         guard();
-        if (!allowedMailIds(principal).includes(invoice.emailId))
+        if (!allowedPaymentSourceIds(principal).includes(invoice.emailId))
           throw new Error("Mail permission changed");
         submitted = true;
         const hash = await submit(
@@ -139,7 +145,7 @@ export async function payDue(principal: Principal, requestId: string) {
           [s.customer, s.recipient, amount, operationId],
           () => {
             guard();
-            if (!allowedMailIds(principal).includes(invoice.emailId))
+            if (!allowedPaymentSourceIds(principal).includes(invoice.emailId))
               throw new Error("Mail permission changed");
           },
         );
