@@ -10,6 +10,16 @@ export const apiPolicy: ReadonlyArray<{
   path: RegExp;
   role: "public" | "human" | "agent";
 }> = [
+  {
+    method: "POST",
+    path: /^\/api\/external-agent\/redemptions$/,
+    role: "agent",
+  },
+  {
+    method: "GET",
+    path: /^\/api\/external-agent\/redemptions$/,
+    role: "agent",
+  },
   { method: "GET", path: /^\/api\/world-agents\/connection$/, role: "human" },
   {
     method: "POST",

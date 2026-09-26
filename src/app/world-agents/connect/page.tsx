@@ -9,6 +9,7 @@ type Connection = {
   initialized: boolean;
   accountLabel: string;
   grants: Grant[];
+  redemptionQuote: { hash: string; totalJpy: string; count: number } | null;
 };
 type Credential = {
   token: string;
@@ -21,6 +22,7 @@ export default function ConnectAccountPage() {
   const [signedIn, setSignedIn] = useState<boolean>();
   const [name, setName] = useState("My external agent");
   const [credential, setCredential] = useState<Credential>();
+  const [allowRedemption, setAllowRedemption] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState("");
@@ -125,10 +127,7 @@ export default function ConnectAccountPage() {
         </span>
         <p>Agent Bank / World ID for Agents</p>
         <h1>{credential ? "Agent connected" : "Connect your account"}</h1>
-        <p>
-          Give an external agent permission to read your demo balance. Payments
-          and transfers are not included.
-        </p>
+        <p>Choose what your external agent can do with Account A.</p>
         {signedIn === undefined && (
           <p role="status">Checking your bank login…</p>
         )}
@@ -196,19 +195,54 @@ export default function ConnectAccountPage() {
                     maxLength={60}
                   />
                 </label>
-                <p>
-                  Account A · Available and locked TD balances · Read only · 15
-                  minutes
-                </p>
+                <p>Balance access · Available and locked TD · 15 minutes</p>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={allowRedemption}
+                    disabled={!connection.redemptionQuote}
+                    onChange={(e) => setAllowRedemption(e.target.checked)}
+                  />
+                  Also allow Aave → Token account → Deposit account
+                </label>
+                {allowRedemption && connection.redemptionQuote ? (
+                  <p>
+                    Return ¥
+                    {BigInt(connection.redemptionQuote.totalJpy).toLocaleString(
+                      "en-US",
+                    )}{" "}
+                    principal from {connection.redemptionQuote.count} invested
+                    positions to Account A. One approved redemption, valid for 5
+                    minutes. The agent cannot choose another recipient.
+                  </p>
+                ) : (
+                  !connection.redemptionQuote && (
+                    <p>No invested positions are available to return.</p>
+                  )
+                )}
                 <p>
                   Each approval uses one fresh World verification. The name is a
                   label you choose, not proof of the agent's identity.
                 </p>
                 <button
-                  disabled={busy || !connection.initialized || !name.trim()}
-                  onClick={() => void act("grant", { name })}
+                  disabled={
+                    busy ||
+                    !connection.initialized ||
+                    !name.trim() ||
+                    (allowRedemption && !connection.redemptionQuote)
+                  }
+                  onClick={() =>
+                    void act("grant", {
+                      name,
+                      ...(allowRedemption
+                        ? { redemptionHash: connection.redemptionQuote?.hash }
+                        : {}),
+                    })
+                  }
                 >
-                  Allow balance access for 15 minutes
+                  {allowRedemption
+                    ? "Allow balance access and return to deposit"
+                    : "Allow balance access for 15 minutes"}
                 </button>
               </>
             )}
@@ -217,9 +251,9 @@ export default function ConnectAccountPage() {
                 <h2>3. Connect your external agent</h2>
                 <p>
                   Download the connection file and give it only to your chosen
-                  agent. Anyone holding it can read this account's balance until
-                  expiry or revocation. It is available only on this page until
-                  you leave or reload.
+                  agent. Anyone holding it can use the permissions you approved
+                  until expiry or revocation. It is available only on this page
+                  until you leave or reload.
                 </p>
                 <button onClick={download}>Download connection file</button>
                 <button
@@ -236,6 +270,24 @@ export default function ConnectAccountPage() {
                   node scripts/agent-balance.mjs
                   /path/to/agent-bank-connection.json
                 </pre>
+                {credential.scope.includes("redemption:execute") && (
+                  <>
+                    <p>To return the approved investments to your deposit:</p>
+                    <pre
+                      style={{
+                        whiteSpace: "pre-wrap",
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      node scripts/agent-redeem.mjs
+                      /path/to/agent-bank-connection.json
+                    </pre>
+                    <p>
+                      To check progress, add <code>--status</code> to the same
+                      command.
+                    </p>
+                  </>
+                )}
               </>
             )}
             {connection.grants.length > 0 && (
@@ -244,7 +296,10 @@ export default function ConnectAccountPage() {
                 {connection.grants.map((g) => (
                   <div key={g.id}>
                     <p>
-                      <strong>{g.name}</strong> · Balance read only
+                      <strong>{g.name}</strong> ·{" "}
+                      {g.scope.includes("redemption:execute")
+                        ? "Balance + approved return to deposit"
+                        : "Balance read only"}
                       <br />
                       Expires {new Date(g.expiresAt).toLocaleTimeString()}
                     </p>
