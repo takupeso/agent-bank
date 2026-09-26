@@ -14,14 +14,12 @@ type Status = {
     | "cancelled"
     | "expired"
     | "failed";
-  sameHuman?: boolean;
 };
-const messages: Record<Status["status"], string> = {
+const messages: Record<Exclude<Status["status"], "verified">, string> = {
   idle: "Verify with World to test your connection to Agent Bank.",
   pending:
     "Waiting for verification. Complete it on World or cancel this request.",
   verifying: "Checking your verification result.",
-  verified: "The bank server has verified your World authentication.",
   cancelled: "Verification cancelled. No banking access was granted.",
   expired: "Verification expired. Start again to continue.",
   failed: "Verification failed. No banking access was granted.",
@@ -74,12 +72,10 @@ export default function WorldAgentsPage() {
             ? "World verified"
             : "Connect with World"}
         </h1>
-        <p>This event sandbox uses mock proofs.</p>
-        <p role="status">
-          {status ? messages[status.status] : "Checking your connection…"}
-        </p>
-        {status?.sameHuman && status.status === "verified" && (
-          <p>Fresh authentication confirmed for the same user.</p>
+        {status?.status !== "verified" && (
+          <p role="status">
+            {status ? messages[status.status] : "Checking your connection…"}
+          </p>
         )}
         {status && !status.configured && (
           <p>A developer needs to configure the World connection.</p>
@@ -111,11 +107,6 @@ export default function WorldAgentsPage() {
           </button>
         )}
         {error && <p role="alert">{error}</p>}
-        <p>
-          This step only checks authentication. It does not grant account access
-          or permission to make payments.
-        </p>
-        <Link href="/">Back to Agent Bank</Link>
       </section>
     </main>
   );
