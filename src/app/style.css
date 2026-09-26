@@ -1140,9 +1140,9 @@ details[open] {
 }
 .automation-amount > .automation-total {
   display: block;
-  font-size: clamp(36px, 7vw, 56px);
+  font-size: 28px;
   font-weight: 500;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
