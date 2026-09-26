@@ -83,9 +83,12 @@ test("World unavailable permits explicit scoped demo consent; OK alone changes n
   await panel.getByRole("button", { name: "Continue as demo" }).click();
   const cancelledChallenge = await (await begun).json();
   await expect(
-    panel.getByText("Payees: Aoba Design, Sakura Office"),
+    panel.getByRole("heading", { name: "Payments on due dates" }),
   ).toBeVisible();
-  await expect(panel.getByText(/Automatic investing/)).toBeVisible();
+  await expect(panel.getByText("Sakura Office", { exact: true })).toBeVisible();
+  await expect(
+    panel.getByRole("heading", { name: /^Investing in / }),
+  ).toBeVisible();
   await panel.getByRole("button", { name: "Cancel" }).click();
   const replay = await page.request.post("/api/demo/approvals", {
     data: { action: "confirm", id: cancelledChallenge.id },
@@ -199,7 +202,9 @@ test("World begin failure still offers explicit demo approval", async ({
   const panel = page.getByRole("region", { name: "World approval" });
   await expect(panel.getByRole("alert")).toBeVisible();
   await panel.getByRole("button", { name: "Continue as demo" }).click();
-  await expect(panel.getByText(/Agent: bank-agent/)).toBeVisible();
+  await expect(
+    panel.getByText("bank-agent can act only within these terms."),
+  ).toBeVisible();
   await page.screenshot({
     path: "/private/tmp/td-auth-approval.png",
     fullPage: true,
