@@ -12,6 +12,11 @@ http
     const publicOrigin = req.headers["x-demo-origin"];
     const headers = { ...req.headers, host: `${upstream.host}:${upstream.port}` };
     delete headers["x-demo-origin"];
+    // Cloudflare adds X-Forwarded-Proto: https etc.; Next would rebuild the
+    // request URL from them and it would no longer look like loopback.
+    for (const name of Object.keys(headers))
+      if (name.startsWith("x-forwarded-") || name === "forwarded")
+        delete headers[name];
     // Only same-origin browser requests are translated; anything else stays
     // foreign and is rejected by the app's origin check.
     if (publicOrigin && headers.origin === publicOrigin) headers.origin = local;

@@ -41,7 +41,8 @@ jobs:
         run: |
           set -eu
           base=http://localhost:8787
-          json=(-H "content-type: application/json" -H "Origin: $base")
+          # Mimic headers the Cloudflare edge adds in production.
+          json=(-H "content-type: application/json" -H "Origin: $base" -H "X-Forwarded-Proto: https" -H "X-Forwarded-Host: example.workers.dev")
 
           echo "--- first visit redirects and sets the sandbox cookie"
           curl -sS -c jar -o /dev/null -w "%{http_code}\n" $base/ | grep -qx 302
