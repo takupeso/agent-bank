@@ -45,7 +45,7 @@ test("due date pays once with receipt and current monthly usage", async ({
     })
     .click();
   await demoApprove(page);
-  await expect(page.getByText("承認時の設定", { exact: true })).toBeVisible();
+  await expect(page.getByText("承認時の設定", { exact: true })).toHaveCount(2);
   await page.goto("/invoices");
   await expect(
     page.getByRole("heading", { name: "サクラオフィス", exact: true }),
@@ -61,7 +61,7 @@ test("due date pays once with receipt and current monthly usage", async ({
     }),
   ).toBeVisible();
   const first = await (await page.request.get("/api/dashboard")).json();
-  expect(first.td).toBe("800000");
+  expect(first.td).toBe("400000");
   expect(first.recipientTd).toBe("200000");
   await openDemoActions(page);
   await page.getByRole("button", { name: "デモ：支払期日を迎える" }).click();
@@ -72,6 +72,6 @@ test("due date pays once with receipt and current monthly usage", async ({
     }),
   ).toBeEnabled();
   const second = await (await page.request.get("/api/dashboard")).json();
-  expect(second.td).toBe("800000");
+  expect(second.td).toBe("400000");
   await page.screenshot({ path: "/tmp/td-bank-pay.png", fullPage: true });
 });

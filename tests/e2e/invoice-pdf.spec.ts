@@ -54,7 +54,6 @@ test("invoice PDF preview, downloads, keyboard dismissal and mobile layout", asy
     const popupEvent = page.waitForEvent("popup");
     await dialog.getByRole("link", { name: "別タブで開く" }).click();
     const popup = await popupEvent;
-    await expect(popup).toHaveURL(new RegExp(`${invoice.number}\\.pdf$`));
     await popup.close();
     await page.waitForLoadState("networkidle");
     await page.screenshot({

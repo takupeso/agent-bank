@@ -27,20 +27,28 @@ test("chat consent persists a versioned rule then change and stop", async ({
     })
     .click();
   await demoApprove(page);
-  await expect(page.getByText("承認時の設定", { exact: true })).toBeVisible();
+  await expect(page.getByText("承認時の設定", { exact: true })).toHaveCount(2);
+  const initial = await (await page.request.get("/api/rules")).json();
+  expect(initial).toHaveLength(2);
+  expect(initial[0].authorization.approvalId).toBe(
+    initial[1].authorization.approvalId,
+  );
   await page.goto("/rules");
+  const payment = page
+    .locator("section.panel")
+    .filter({ has: page.getByRole("heading", { name: /自動支払い/ }) });
   await expect(page.getByLabel("月合計の支払上限（円）").first()).toHaveValue(
     "200000",
   );
   await page.getByLabel("月合計の支払上限（円）").first().fill("300000");
-  await page.getByRole("button", { name: "変更を保存" }).click();
+  await payment.getByRole("button", { name: "変更を保存" }).click();
   await demoApprove(page);
-  await expect(page.getByText("有効 · 第2版")).toBeVisible();
-  await page.getByRole("button", { name: "停止する" }).click();
-  await expect(page.getByText("停止中 · 第3版")).toBeVisible();
-  await page.getByRole("button", { name: "有効にする" }).click();
+  await expect(payment.getByText("有効 · 第2版")).toBeVisible();
+  await payment.getByRole("button", { name: "停止する" }).click();
+  await expect(payment.getByText("停止中 · 第3版")).toBeVisible();
+  await payment.getByRole("button", { name: "有効にする" }).click();
   await demoApprove(page);
-  await expect(page.getByText("有効 · 第4版")).toBeVisible();
+  await expect(payment.getByText("有効 · 第4版")).toBeVisible();
   await page.reload();
   await expect(page.getByLabel("月合計の支払上限（円）").first()).toHaveValue(
     "300000",

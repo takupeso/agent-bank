@@ -168,7 +168,11 @@ function active(d: Delegation, principal: Principal, scope: Scope) {
     a.instanceId !== instance().id ||
     a.authMode !== principal.authMode ||
     a.generation !== principal.generation ||
-    (principal.authMode === "world" && a.approvalMethod !== "world")
+    (principal.authMode === "world" &&
+      a.approvalMethod !== "world" &&
+      !(a.approvalMethod === "human-confirmation" &&
+        !d.rule &&
+        ["mail", "read", "propose"].includes(scope)))
   )
     throw new AuthorizationError(403);
   const p = assertDelegationApproval(a.approvalId, a);

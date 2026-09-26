@@ -24,35 +24,13 @@ test("redeem all investment through chat and restore original TD", async ({
     })
     .click();
   await demoApprove(page);
-  await expect(page.getByText("承認時の設定", { exact: true })).toBeVisible();
+  await expect(page.getByText("承認時の設定", { exact: true })).toHaveCount(2);
   await openDemoActions(page);
   await page.getByRole("button", { name: "デモ：支払期日を迎える" }).click();
   await expect(
     page.getByText("アオバデザインへの¥200,000の支払いが完了しました。", {
       exact: true,
     }),
-  ).toBeVisible();
-  await openDemoActions(page);
-  await page
-    .getByRole("button", { name: "余力を運用したい", exact: true })
-    .click();
-  await expect(
-    page.getByText("余力運用の設定案", { exact: true }),
-  ).toBeVisible();
-  await openDemoActions(page);
-  await page
-    .getByRole("button", { name: "そうしてください（運用設定）", exact: true })
-    .click();
-  await demoApprove(page);
-  await expect(
-    page.getByText(
-      "余力の自動運用を設定しました。承認条件を再確認して運用を開始します。",
-    ),
-  ).toBeVisible();
-  await expect(
-    page.getByText(
-      "¥400,000を別段口座にlockし、2,500擬似USDC相当を模擬運用しました。",
-    ),
   ).toBeVisible();
   const data = await (await page.request.get("/api/dashboard")).json();
   expect(data.td).toBe("400000");
@@ -110,30 +88,13 @@ test("redeem multiple positions even after investment rule is stopped", async ({
     })
     .click();
   await demoApprove(page);
-  await expect(page.getByText("承認時の設定", { exact: true })).toBeVisible();
+  await expect(page.getByText("承認時の設定", { exact: true })).toHaveCount(2);
   await openDemoActions(page);
   await page.getByRole("button", { name: "デモ：支払期日を迎える" }).click();
   await expect(
     page.getByText("アオバデザインへの¥200,000の支払いが完了しました。", {
       exact: true,
     }),
-  ).toBeVisible();
-  await openDemoActions(page);
-  await page
-    .getByRole("button", { name: "余力を運用したい", exact: true })
-    .click();
-  await expect(
-    page.getByText("余力運用の設定案", { exact: true }),
-  ).toBeVisible();
-  await openDemoActions(page);
-  await page
-    .getByRole("button", { name: "そうしてください（運用設定）", exact: true })
-    .click();
-  await demoApprove(page);
-  await expect(
-    page.getByText(
-      "余力の自動運用を設定しました。承認条件を再確認して運用を開始します。",
-    ),
   ).toBeVisible();
   await openDemoActions(page);
   await page

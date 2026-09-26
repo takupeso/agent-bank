@@ -37,7 +37,7 @@ export type PaymentRecipientLimit = {
 };
 export type AuthorizationBinding = {
   approvalId: string;
-  approvalMethod: "world" | "local-demo";
+  approvalMethod: "world" | "local-demo" | "human-confirmation";
   accountId: string;
   agentId: string;
   authMode: "world" | "local-demo";

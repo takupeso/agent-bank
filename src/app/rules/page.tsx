@@ -248,6 +248,8 @@ export default function Rules() {
                 ·{" "}
                 {g.authorization.approvalMethod === "local-demo"
                   ? "デモ承認（World省略）"
+                  : g.authorization.approvalMethod === "human-confirmation"
+                    ? "画面で確認"
                   : "World確認"}
               </p>
               <button

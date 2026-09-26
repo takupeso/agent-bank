@@ -42,8 +42,11 @@ type Binding = {
   flow?: WorldFlow;
 };
 export type Policy = {
-  operation: "proposal" | "change" | "delegation";
+  operation: "proposal" | "change" | "delegation" | "setup";
   proposalId?: string;
+  investmentProposalId?: string;
+  investmentBaseVersion?: number;
+  investmentConditions?: Proposal["conditions"];
   baseVersion: number;
   conditions: Proposal["conditions"] | DelegationProposal["conditions"];
   agentId: string;
@@ -69,7 +72,7 @@ type Challenge = ReturnType<typeof createRpContext> & {
   sessionId?: string;
   policy?: Policy;
   verifiedAt?: string;
-  approvalMethod?: "world" | "local-demo";
+  approvalMethod?: "world" | "local-demo" | "human-confirmation";
   credentialId?: string;
 };
 function tables() {
@@ -187,7 +190,53 @@ function policy(
     target: executionTarget(),
   };
 }
+function setupPolicy(paymentId: string, investmentId: string): Policy {
+  const payment = get<Proposal>("proposals", paymentId);
+  const investment = get<Proposal>("proposals", investmentId);
+  if (
+    !payment ||
+    !investment ||
+    payment.kind !== "payment" ||
+    investment.kind !== "investment"
+  )
+    throw new AuthorizationError(404);
+  return {
+    ...policy("proposal", payment.baseVersion, payment.conditions, payment.id),
+    operation: "setup",
+    investmentProposalId: investment.id,
+    investmentBaseVersion: investment.baseVersion,
+    investmentConditions: conditions.parse(investment.conditions),
+    scopes: ["payment", "investment", "redemption"],
+  };
+}
 function checkPolicy(p: Policy) {
+  if (p.operation === "setup") {
+    if (
+      digest(setupPolicy(p.proposalId!, p.investmentProposalId!)) !== digest(p)
+    )
+      throw new AuthorizationError(409, "Setup target changed");
+    for (const [id, kind, version, value] of [
+      [p.proposalId, "payment", p.baseVersion, p.conditions],
+      [
+        p.investmentProposalId,
+        "investment",
+        p.investmentBaseVersion,
+        p.investmentConditions,
+      ],
+    ] as const) {
+      const source = get<Proposal>("proposals", id!);
+      if (
+        !source ||
+        source.status !== "proposed" ||
+        source.kind !== kind ||
+        source.baseVersion !== version ||
+        (get<Rule>("rules", kind)?.version ?? 0) !== version ||
+        digest(conditions.parse(source.conditions)) !== digest(value)
+      )
+        throw new AuthorizationError(409, "Setup proposal changed");
+    }
+    return;
+  }
   if (
     digest(policy(p.operation, p.baseVersion, p.conditions, p.proposalId)) !==
     digest(p)
@@ -225,6 +274,11 @@ function checkPolicy(p: Policy) {
 }
 const challengeInput = z.discriminatedUnion("purpose", [
   z.object({
+    purpose: z.literal("setup"),
+    paymentProposalId: z.string().min(1).max(100),
+    investmentProposalId: z.string().min(1).max(100),
+  }),
+  z.object({
     purpose: z.literal("delegation"),
     proposalId: z.string().min(1).max(100),
   }),
@@ -236,6 +290,11 @@ const challengeInput = z.discriminatedUnion("purpose", [
 ]);
 function requestedPolicy(input: unknown): Policy {
   const body = challengeInput.parse(input);
+  if (body.purpose === "setup") {
+    const p = setupPolicy(body.paymentProposalId, body.investmentProposalId);
+    checkPolicy(p);
+    return p;
+  }
   if (body.purpose === "delegation") {
     const proposal = delegationProposal(body.proposalId);
     const p = policy(
@@ -438,19 +497,46 @@ function applyPolicy(c: Challenge) {
       applied: true,
       delegation: applyDelegation(p.proposalId!, binding),
     };
-  const normalized = conditions.parse(p.conditions);
+  if (p.operation === "setup") {
+    const payment = applyRule(c, p.conditions, p.baseVersion, p.proposalId!);
+    const investment = applyRule(
+      c,
+      p.investmentConditions!,
+      p.investmentBaseVersion!,
+      p.investmentProposalId!,
+    );
+    return {
+      applied: true,
+      rules: [payment.rule, investment.rule],
+      rule: investment.rule,
+      delegation: investment.delegation,
+    };
+  }
+  return {
+    applied: true,
+    ...applyRule(c, p.conditions, p.baseVersion, p.proposalId),
+  };
+}
+function applyRule(
+  c: Challenge,
+  value: Policy["conditions"],
+  baseVersion: number,
+  proposalId?: string,
+) {
+  const binding = authorization(c);
+  const normalized = conditions.parse(value);
   const rule: Rule = {
     ...normalized,
-    version: p.baseVersion + 1,
+    version: baseVersion + 1,
     consentId: c.id,
     worldApprovalId: c.id,
     authorization: binding,
   };
   put("rule_versions", { ...rule, id: rule.id + ":" + rule.version });
   put("rules", rule);
-  if (p.proposalId)
+  if (proposalId)
     put("proposals", {
-      ...get<Proposal>("proposals", p.proposalId)!,
+      ...get<Proposal>("proposals", proposalId)!,
       status: "accepted",
       consentId: c.id,
     });
@@ -467,7 +553,7 @@ function applyPolicy(c: Challenge) {
     data: { rule },
   });
   const delegation = applyDelegation(undefined, binding, rule);
-  return { applied: true, rule, delegation };
+  return { rule, delegation };
 }
 export function assertRuleApproval(rule: Rule) {
   const a = rule.authorization,
@@ -489,8 +575,11 @@ export function assertRuleApproval(rule: Rule) {
     c.status !== "consumed" ||
     digest(authorization(c)) !== digest(a) ||
     p.instanceId !== instance().id ||
-    p.baseVersion + 1 !== rule.version ||
-    digest(p.conditions) !== digest(conditions.parse(rule)) ||
+    (rule.id === "investment" && p.operation === "setup"
+      ? p.investmentBaseVersion! + 1 !== rule.version ||
+        digest(p.investmentConditions) !== digest(conditions.parse(rule))
+      : p.baseVersion + 1 !== rule.version ||
+        digest(p.conditions) !== digest(conditions.parse(rule))) ||
     digest(p.target) !== digest(executionTarget())
   )
     throw new AuthorizationError(403, "Gateway requires approved policy");
@@ -518,6 +607,50 @@ export function assertDelegationApproval(
     if (c.sessionId !== binding()?.sessionId) throw new AuthorizationError(403);
   }
   return p;
+}
+export function confirmMailDelegation(
+  proposalId: string,
+  principal: Principal,
+) {
+  requirePrincipal(principal, "human");
+  tables();
+  return sqlite.transaction(() => {
+    const source = delegationProposal(proposalId);
+    if (source.status !== "proposed") throw new AuthorizationError(409);
+    const p = policy(
+      "delegation",
+      source.baseVersion,
+      source.conditions,
+      source.id,
+    );
+    checkPolicy(p);
+    const id = randomUUID();
+    const now = Math.floor(Date.now() / 1000);
+    const c: Challenge = {
+      id,
+      owner: digest(principal.credentialId),
+      credentialId: principal.credentialId,
+      purpose: "policy",
+      status: "consumed",
+      approvalMethod: "human-confirmation",
+      policy: p,
+      appId: "human-confirmation",
+      environment: "production",
+      credential: worldCredential,
+      flow: "session",
+      rpContext: {
+        rp_id: "human-confirmation",
+        nonce: randomUUID(),
+        created_at: now,
+        expires_at: now + 300,
+        signature: "human-confirmation",
+      },
+      signal: digest({ p, id }),
+      verifiedAt: new Date().toISOString(),
+    };
+    save(c);
+    return applyPolicy(c);
+  })();
 }
 export function beginDemoApproval(input: unknown, principal: Principal) {
   requirePrincipal(principal, "human");

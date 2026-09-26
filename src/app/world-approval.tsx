@@ -14,6 +14,11 @@ export type WorldStatus = {
 export type WorldRequest =
   | { purpose: "proposal" | "delegation"; proposalId: string }
   | {
+      purpose: "setup";
+      paymentProposalId: string;
+      investmentProposalId: string;
+    }
+  | {
       purpose: "change";
       change: { baseVersion: number; conditions: Proposal["conditions"] };
     };
@@ -23,6 +28,8 @@ type Policy = {
   agentId: string;
   scopes: string[];
   conditions: Proposal["conditions"] | { mailIds: string[] };
+  investmentConditions?: Proposal["conditions"];
+  investmentBaseVersion?: number;
   target: {
     recipient: string;
     investment: {
@@ -156,6 +163,7 @@ export function WorldApproval({
   const policy = demo?.policy ?? challenge?.policy;
   const conditions = policy?.conditions;
   const c = conditions && "id" in conditions ? conditions : undefined;
+  const investment = policy?.investmentConditions;
   const names: Record<string, string> = {
     read: "業務データ参照",
     propose: "条件の提案",
@@ -168,7 +176,7 @@ export function WorldApproval({
     <section className="panel approval-policy" aria-label="World承認">
       <h2>この内容を承認</h2>
       <p>銀行が保存した対象と条件を確認してください。承認後に反映されます。</p>
-      {c?.id === "investment" && c.enabled && (
+      {((c?.id === "investment" && c.enabled) || investment?.enabled) && (
         <p>承認すると、条件内の余力をAaveへ預け入れます。</p>
       )}
       {policy && (
@@ -252,6 +260,29 @@ export function WorldApproval({
                 </>
               )}
             </>
+          )}
+          {investment && (
+            <div className="card">
+              <h3>
+                余力の自動運用 · 第{(policy.investmentBaseVersion ?? 0) + 1}版
+              </h3>
+              <p>
+                1回の運用上限：¥{investment.maxInvestmentJpy} / 予備資金：¥
+                {investment.safetyBufferJpy} / 最低残高：¥
+                {investment.minimumBalanceJpy}
+              </p>
+              <p>
+                運用先：{policy.target.investment.protocol} ·{" "}
+                {policy.target.investment.mode === "stub"
+                  ? "模擬運用"
+                  : `Chain ${policy.target.investment.chainId}`}
+              </p>
+              <p className="hash">
+                Pool: {policy.target.investment.pool}
+                <br />
+                Token: {policy.target.investment.token}
+              </p>
+            </div>
           )}
         </div>
       )}
@@ -366,7 +397,7 @@ export function WorldApproval({
               }}
             >
               {busy
-                ? c?.id === "investment" && c.enabled
+                ? (c?.id === "investment" && c.enabled) || investment?.enabled
                   ? "承認・運用開始中…"
                   : "承認中…"
                 : "この内容をデモ承認"}

@@ -24,9 +24,9 @@ test("stopped payment rule applies to unexecuted invoice and can resume", async 
     })
     .click();
   await demoApprove(page);
-  await expect(page.getByText("承認時の設定", { exact: true })).toBeVisible();
+  await expect(page.getByText("承認時の設定", { exact: true })).toHaveCount(2);
   await page.goto("/rules");
-  await page.getByRole("button", { name: "停止する" }).click();
+  await page.getByRole("button", { name: "停止する" }).first().click();
   await expect(page.getByText("停止中 · 第2版")).toBeVisible();
   await page.goto("/chat");
   await openDemoActions(page);
@@ -39,10 +39,10 @@ test("stopped payment rule applies to unexecuted invoice and can resume", async 
     }),
   ).toBeEnabled();
   expect((await (await page.request.get("/api/dashboard")).json()).td).toBe(
-    "1000000",
+    "600000",
   );
   await page.goto("/rules");
-  await page.getByRole("button", { name: "有効にする" }).click();
+  await page.getByRole("button", { name: "有効にする" }).first().click();
   await demoApprove(page);
   await expect(page.getByText("有効 · 第3版")).toBeVisible();
   await page.goto("/chat");

@@ -26,6 +26,15 @@ export const test = base.extend({
 });
 export { expect };
 export async function demoApprove(page: Page) {
+  await page
+    .getByRole("region", { name: /World承認|メール閲覧の確認/ })
+    .waitFor();
+  const mail = page.getByRole("region", { name: "メール閲覧の確認" });
+  if (await mail.isVisible()) {
+    await mail.getByRole("button", { name: "この内容で許可して確認" }).click();
+    await expect(mail).not.toBeVisible();
+    return;
+  }
   const panel = page.getByRole("region", { name: "World承認" });
   await panel
     .getByRole("button", { name: "デモとして続ける", exact: true })

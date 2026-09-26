@@ -44,7 +44,7 @@ pnpm auth enroll
 
 本実装は`IDKit.request`のOrb proof（`proof_of_human`）と固定action `agent-bank-account`を使います。nonce・signal・action・environment・登録したnullifierとの対応を銀行側で確認し、Developer Portalで証明を検証します。session方式やSelfie Checkへの切替は提供していません。
 
-口座への登録、ログイン、Agentへの委任、ルール設定・変更をそれぞれ必要な条件で確認します。worldモードではデモ継続へ自動的に切り替わりません。停止・取消は本人が実行でき、権限拡大や再有効化には新しい承認が必要です。
+口座への登録とログインはWorldで確認します。サンプルメール閲覧の委任は、ログイン済み本人が画面に示された対象と範囲を確認して許可します。初期の支払い・運用条件は1件のWorld確認でまとめて承認します。以後の条件変更や再有効化には新しい承認が必要です。worldモードではデモ継続へ自動的に切り替わりません。停止・取消は本人が実行できます。
 
 `pnpm world:status`は設定や登録の状態を確認するコマンドです。DBには本人識別子・承認内容を保存するため、DB、proof、cookie、ticket、credentialをGitや会話へ貼り付けないでください。World連携は銀行KYCの代替ではありません。
 
