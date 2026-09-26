@@ -31,3 +31,4 @@ tmp/
 *.log
 *.sqlite*
 *.db
+.wrangler/

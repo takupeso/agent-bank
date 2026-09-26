@@ -71,6 +71,21 @@ pnpm sepolia fund 0.002 --send
 
 アプリの実送信は`PUBLIC_TRANSACTIONS_ENABLED=true`を明示した場合のみ有効です。既定はfalseです。`ten-usdc`プロファイルは10 USDC、`standard`は2,500 USDCを上限に運用します。固定換算は1 USDC＝160円です。運用中はDB・Anvil state・鍵を一緒に保持し、全額償還後に実送信を無効にしてください。
 
+## 公開デモ（Cloudflare Containers）
+
+ETHGlobal等で誰でも触れるデモとして、Cloudflare Containersへデプロイできます。訪問者ごとに使い捨てのコンテナ（アプリ＋ローカルAnvil＋SQLite、stubモード）を割り当て、他の訪問者と状態を共有しません。コンテナは30分操作がないと停止し、状態は破棄されます。
+
+```sh
+pnpm exec wrangler login
+pnpm cf:deploy
+```
+
+Docker（Rancher Desktop等）とWorkers Paidプランが必要です。`/new-sandbox`を開くと新しいサンドボックスに切り替わります。
+
+- コンテナ内でアプリはloopbackにバインドしたままです。`deploy/cloudflare/proxy.mjs`が同一オリジンのリクエストだけをloopbackとして中継し、local-demoログインを公開します。架空資産のみを扱う隔離サンドボックスであることが前提です。
+- コンテナの外部通信は無効です。Gemini・World・Base Sepoliaは使えません。
+- 同時に起動するサンドボックス数の上限は`wrangler.jsonc`の`max_instances`で調整します。
+
 ## 認証・AI
 
 - [World・本人認証・Agent credential](docs/world-setup.md)

@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "agent-bank-demo",
+  "main": "deploy/cloudflare/worker.ts",
+  "compatibility_date": "2026-09-26",
+  "observability": { "enabled": true },
+  "containers": [
+    {
+      "class_name": "BankSandbox",
+      "image": "./Dockerfile",
+      "instance_type": "standard-1",
+      "max_instances": 30
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "BANK_SANDBOX", "class_name": "BankSandbox" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["BankSandbox"] }]
+}
