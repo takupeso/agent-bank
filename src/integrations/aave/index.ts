@@ -29,7 +29,7 @@ export async function supplyAndDeposit(
     id: result.id,
     steps: [
       {
-        label: "擬似USDC供給・Aave模擬預入",
+        label: "Test USDC funding and simulated Aave deposit",
         mode: "stub" as const,
         ref: result.id,
       },
@@ -61,7 +61,7 @@ export async function withdrawAndReturn(
     evidence: undefined,
     steps: [
       {
-        label: "Aave模擬引出し・銀行へ擬似USDC返却確認",
+        label: "Simulated Aave withdrawal and test USDC return to bank",
         mode: "stub" as const,
         ref: result.id,
       },

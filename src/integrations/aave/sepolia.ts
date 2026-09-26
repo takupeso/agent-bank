@@ -243,10 +243,10 @@ async function execute(
 export const evidenceSteps = (evidence: Evidence[]): Run["steps"] =>
   evidence.map((e) => ({
     label: {
-      transfer: "疑似USDCの受渡し",
-      approve: "Aaveへの元本利用を許可",
-      supply: "Aaveへ預入",
-      withdraw: "Aaveから元本引出し",
+      transfer: "Test USDC transfer",
+      approve: "Approve principal for Aave",
+      supply: "Deposit into Aave",
+      withdraw: "Withdraw principal from Aave",
     }[e.action],
     mode: "sepolia",
     chainId: 84532,

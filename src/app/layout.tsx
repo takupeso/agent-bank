@@ -5,15 +5,15 @@ import "./style.css";
 import { Navigation } from "./navigation";
 import { AgentPanel } from "./chat/agent-panel";
 export const metadata = {
-  title: "Agent Bank — ローカルデモ",
-  description: "人が決め、Agentが実行する銀行",
+  title: "Agent Bank — Local demo",
+  description: "You set the terms. Your agent handles the banking.",
 };
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ja">
+    <html lang="en">
       <body>
         <a className="skip-link" href="#main">
-          本文へ移動
+          Skip to main content
         </a>
         <AuthGate>
           <div className="app-shell">
@@ -23,15 +23,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   ab
                 </span>
                 Agent Bank
-                <span className="brand-caption">あなたの条件で動く銀行</span>
+                <span className="brand-caption">Banking on your terms</span>
               </Link>
               <Navigation />
               <LogoutButton />
               <small>
-                TD：ローカルAnvil
+                TD: local Anvil
                 <br />
-                AI：{aiMode() === "gemini" ? "Gemini" : "stub"} /
-                資産接続は各画面に表示
+                AI: {aiMode() === "gemini" ? "Gemini" : "stub"} / Asset
+                connections shown on each page
               </small>
             </aside>
             <main id="main">{children}</main>

@@ -25,17 +25,17 @@ test("ten USDC profile proposes and redeems exactly 1600 TD locally", async ({
   };
   await post("/api/demo/reset", {});
   let messages = await post("/api/chat/messages", {
-    text: "サンプルメールの閲覧を許可して確認して",
+    text: "I allow access to my emails. Please check the invoices.",
   });
   await approveApi(page.request, messages.at(-1).data.input, origin);
   messages = await post("/api/chat/messages", {
-    text: "サンプルメールの閲覧を許可して確認して",
+    text: "I allow access to my emails. Please check the invoices.",
   });
   let proposal = messages.findLast(
     (m: { kind: string }) => m.kind === "proposal",
   ).data.proposal;
   await post("/api/chat/messages", {
-    text: "そうしてください",
+    text: "Confirm these settings",
     proposalId: proposal.id,
   });
   await approveApi(
@@ -47,12 +47,14 @@ test("ten USDC profile proposes and redeems exactly 1600 TD locally", async ({
     type: "due_date_reached",
     requestId: crypto.randomUUID(),
   });
-  messages = await post("/api/chat/messages", { text: "余力を運用したい" });
+  messages = await post("/api/chat/messages", {
+    text: "Invest my available funds",
+  });
   proposal = messages.findLast((m: { kind: string }) => m.kind === "proposal")
     .data.proposal;
   expect(proposal.conditions.maxInvestmentJpy).toBe("1600");
   await post("/api/chat/messages", {
-    text: "そうしてください",
+    text: "Confirm these settings",
     proposalId: proposal.id,
   });
   await approveApi(
@@ -65,7 +67,7 @@ test("ten USDC profile proposes and redeems exactly 1600 TD locally", async ({
   expect(invested.positionUsdc).toBe("10000000");
   await page.goto("/investment");
   await expect(page.getByText("10 USDC", { exact: true })).toBeVisible();
-  await post("/api/chat/messages", { text: "運用分を全部TDに戻して" });
+  await post("/api/chat/messages", { text: "Redeem all investments to TD" });
   const after = await (await page.request.get("/api/dashboard")).json();
   expect(after.td).toBe("800000");
   expect(after.locked).toBe("0");

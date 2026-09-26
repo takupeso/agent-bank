@@ -13,11 +13,8 @@ type Flow = {
 };
 export default function Investment() {
   const [mode, setMode] = useState("stub");
-  const [interest, setInterest] = useState("0");
-  const [principal, setPrincipal] = useState("0");
   const [flow, setFlow] = useState<Flow | null>(null);
   const [position, setPosition] = useState("0");
-  const [locked, setLocked] = useState("0");
   async function load() {
     const [f, d] = await Promise.all([
       apiFetch("/api/cashflow"),
@@ -27,75 +24,98 @@ export default function Investment() {
     if (d.ok) {
       const data = await d.json();
       setMode(data.mode);
-      setInterest(data.interestUsdc ?? "0");
-      setPrincipal(data.principalUsdc ?? data.positionUsdc ?? "0");
       setPosition(data.positionUsdc ?? "0");
-      setLocked(data.locked ?? "0");
     }
   }
   useEffect(() => {
-    void load();
+    const refresh = () => void load();
+    refresh();
+    window.addEventListener("agent-bank:invoices-updated", refresh);
+    return () =>
+      window.removeEventListener("agent-bank:invoices-updated", refresh);
   }, []);
   return (
     <>
       <header>
-        <h1>資金計画・運用</h1>
-        <p>月末までのお金を確保し、現在の余力を運用します。</p>
-        <span className="badge">
-          {mode === "sepolia"
-            ? "Base Sepolia · Aave疑似USDC / 実残高"
-            : "Aave・USDCは模擬処理 / 利息0・APY未取得"}
-        </span>
+        <h1>Investment plan</h1>
+        <p>Keep funds for month-end needs and invest the available balance.</p>
       </header>
       {flow && (
         <>
-          <section className="metrics">
-            {[
-              ["利用可能なTD", flow.td],
-              ["確保する資金", flow.reserveJpy],
-              ["追加で運用できる額", flow.investJpy],
-            ].map(([title, value]) => (
-              <article key={title}>
-                <p>{title}</p>
-                <strong>¥{BigInt(value).toLocaleString()}</strong>
-              </article>
-            ))}
-          </section>
-          <section className="panel">
-            <h2>月末までの内訳</h2>
-            <p>確定未払：¥{BigInt(flow.confirmedJpy).toLocaleString()}</p>
-            <p>
-              履歴からの予測：¥{BigInt(flow.predictedJpy).toLocaleString()}
-              （ミナトクラウド）
-            </p>
-            <p>予備資金：¥{BigInt(flow.bufferJpy).toLocaleString()}</p>
-            <h2>運用資産（{mode === "sepolia" ? "Sepolia Aave" : "stub"}）</h2>
-            <strong>{formatUsdc(position)} USDC</strong>
-            <p>
-              対応するTD lock：¥{BigInt(locked).toLocaleString()}
-              （資産合計に二重計上しません）
-            </p>
-            {mode === "sepolia" && (
-              <p>
-                対応元本 {formatUsdc(principal)} USDC · 利息相当{" "}
-                {formatUsdc(interest)} USDC（TD償還対象外）
-              </p>
-            )}
-            <p>1 USDC = 160円 · 手数料0</p>
-          </section>
+          <div className="investment-plan">
+            <section className="panel" aria-labelledby="deposit-balance-title">
+              <div className="plan-total">
+                <h2 id="deposit-balance-title">Deposit balance</h2>
+                <strong>¥{BigInt(flow.td).toLocaleString("en-US")}</strong>
+              </div>
+            </section>
+            <section className="panel" aria-labelledby="reserved-funds-title">
+              <div className="plan-total">
+                <h2 id="reserved-funds-title">Reserved funds</h2>
+                <strong>
+                  ¥{BigInt(flow.reserveJpy).toLocaleString("en-US")}
+                </strong>
+              </div>
+              <section
+                className="plan-breakdown"
+                aria-labelledby="reserve-breakdown-title"
+              >
+                <h3 id="reserve-breakdown-title">
+                  Breakdown through month-end
+                </h3>
+                <dl>
+                  <div>
+                    <dt>Confirmed invoice payments</dt>
+                    <dd>
+                      ¥{BigInt(flow.confirmedJpy).toLocaleString("en-US")}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Forecast from history (Minato Cloud)</dt>
+                    <dd>
+                      ¥{BigInt(flow.predictedJpy).toLocaleString("en-US")}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Safety buffer</dt>
+                    <dd>¥{BigInt(flow.bufferJpy).toLocaleString("en-US")}</dd>
+                  </div>
+                </dl>
+              </section>
+            </section>
+            <section
+              className="panel"
+              aria-labelledby="investment-assets-title"
+            >
+              <h2 id="investment-assets-title">Investment assets</h2>
+              <div className="plan-investments">
+                <section aria-labelledby="invested-title">
+                  <h3 id="invested-title">Invested</h3>
+                  <strong>{formatUsdc(position)} USDC</strong>
+                  {mode === "stub" && (
+                    <p className="plan-caption">Simulation</p>
+                  )}
+                </section>
+                <section aria-labelledby="investable-title">
+                  <h3 id="investable-title">Available to invest</h3>
+                  <strong>
+                    ¥{BigInt(flow.investJpy).toLocaleString("en-US")}
+                  </strong>
+                </section>
+              </div>
+            </section>
+          </div>
           <div className="quick-actions">
             <DemoEvent
               type="surplus_check"
-              label="デモ：余力をチェック"
+              label="Demo: Check available funds"
               onComplete={() => void load()}
             />
           </div>
         </>
       )}
       {!flow && (
-        <section className="panel">
-          先にホームでデモを初期化してください。
-        </section>
+        <section className="panel">Initialize the demo on Home first.</section>
       )}
     </>
   );

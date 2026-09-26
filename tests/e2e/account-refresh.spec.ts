@@ -27,7 +27,7 @@ for (const chatFails of [false, true]) {
                     direction: "out",
                     amount: "200000",
                     unit: "JPY",
-                    label: "請求書の支払い",
+                    label: "Invoice payment",
                   },
                 ]
               : [],
@@ -49,20 +49,25 @@ for (const chatFails of [false, true]) {
     });
     await page.goto("/");
     const deposit = page.locator(".account-card").filter({
-      has: page.getByRole("heading", { name: "預金口座", exact: true }),
+      has: page.getByRole("heading", { name: "Deposit account", exact: true }),
     });
     await expect(deposit.locator(".account-card-header strong")).toHaveText(
       "¥1,000,000",
     );
-    await page.getByText("デモ操作とよく使う依頼", { exact: true }).click();
     await page
-      .getByRole("button", { name: "デモ：支払期日を迎える", exact: true })
+      .getByText("Demo actions and common requests", { exact: true })
+      .click();
+    await page
+      .getByRole("button", {
+        name: "Demo: advance to payment due date",
+        exact: true,
+      })
       .click();
     await expect(deposit.locator(".account-card-header strong")).toHaveText(
       "¥800,000",
     );
     await expect(
-      deposit.getByText("請求書の支払い", { exact: true }),
+      deposit.getByText("Invoice payment", { exact: true }),
     ).toBeVisible();
     await expect(deposit.getByText("−¥200,000", { exact: true })).toBeVisible();
   });
@@ -95,16 +100,16 @@ test("reset explains outstanding assets without starting redemption", async ({
         json: {
           code: "OUTSTANDING_ASSETS",
           error:
-            "運用中の資金があるため、リセットできません。チャットで「運用分を全部TDに戻して」を実行してください。",
+            "Cannot reset while funds are invested. Send 'Redeem all investments to TD' in chat.",
         },
       });
     return route.fulfill({ status: 404, json: {} });
   });
   await page.goto("/");
-  await page
-    .getByRole("button", { name: "デモをリセット", exact: true })
-    .click();
-  await expect(page.locator("main").getByRole("alert")).toContainText("運用分を全部TDに戻して");
+  await page.getByRole("button", { name: "Reset demo", exact: true }).click();
+  await expect(page.locator("main").getByRole("alert")).toContainText(
+    "Redeem all investments to TD",
+  );
   expect(calls).toEqual(["/api/demo/reset"]);
   await expect(page.locator("main").getByRole("alert")).toBeVisible();
 });

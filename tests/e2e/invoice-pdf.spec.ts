@@ -24,13 +24,13 @@ test("invoice PDF preview, downloads, keyboard dismissal and mobile layout", asy
   for (const mail of mails) {
     const invoice = mail.attachment;
     const open = page.getByRole("button", {
-      name: `${invoice.issuer}の請求書を見る`,
+      name: `${invoice.issuer} invoice preview`,
     });
     await open.click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("heading")).toHaveText(
-      `${invoice.issuer}の請求書`,
+      `${invoice.issuer} invoice`,
     );
     const url = `/invoices/${invoice.number}.pdf`;
     await expect(dialog.locator("iframe")).toHaveAttribute(
@@ -41,18 +41,18 @@ test("invoice PDF preview, downloads, keyboard dismissal and mobile layout", asy
     expect(response.headers()["content-type"]).toContain("application/pdf");
     expect((await response.body()).subarray(0, 5).toString()).toBe("%PDF-");
     await expect(
-      dialog.getByRole("link", { name: "別タブで開く" }),
+      dialog.getByRole("link", { name: "Open in new tab" }),
     ).toHaveAttribute("target", "_blank");
     await expect(
-      dialog.getByRole("link", { name: "別タブで開く" }),
+      dialog.getByRole("link", { name: "Open in new tab" }),
     ).toHaveAttribute("href", url);
     const downloadEvent = page.waitForEvent("download");
-    await dialog.getByRole("link", { name: "ダウンロード" }).click();
+    await dialog.getByRole("link", { name: "Download" }).click();
     const download = await downloadEvent;
     expect(download.suggestedFilename()).toBe(`${invoice.number}.pdf`);
     expect(await download.failure()).toBeNull();
     const popupEvent = page.waitForEvent("popup");
-    await dialog.getByRole("link", { name: "別タブで開く" }).click();
+    await dialog.getByRole("link", { name: "Open in new tab" }).click();
     const popup = await popupEvent;
     await popup.close();
     await page.waitForLoadState("networkidle");
@@ -65,7 +65,7 @@ test("invoice PDF preview, downloads, keyboard dismissal and mobile layout", asy
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await page
-    .getByRole("button", { name: "アオバデザインの請求書を見る" })
+    .getByRole("button", { name: "Aoba Design invoice preview" })
     .click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
@@ -76,9 +76,9 @@ test("invoice PDF preview, downloads, keyboard dismissal and mobile layout", asy
   ).toBe(true);
   await page.waitForLoadState("networkidle");
   await page.screenshot({ path: "/tmp/td-invoice-mobile.png" });
-  await dialog.getByRole("button", { name: "閉じる" }).click();
+  await dialog.getByRole("button", { name: "Close" }).click();
   await expect(dialog).not.toBeVisible();
-  await page.getByText("元メールを表示", { exact: true }).first().click();
+  await page.getByText("View source email", { exact: true }).first().click();
   await expect(
     page.locator("main").getByText(mails[0].body, { exact: true }),
   ).toBeVisible();

@@ -5,32 +5,32 @@ test("mail evidence is visible before consent and invoices wait for consent", as
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /デモを(初期化|リセット)/ }).click();
-  await expect(page.getByText("¥1,000,000", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
+  await expect(page.locator("main").getByText("¥1,000,000", { exact: true })).toBeVisible();
   await page.goto("/chat");
   await openDemoActions(page);
   await openDemoActions(page);
   await page
     .getByRole("button", {
-      name: "サンプルメールの閲覧を許可して確認",
+      name: "I allow access to my emails. Please check the invoices.",
       exact: true,
     })
     .click();
   await demoApprove(page);
-  await page.getByText("元メールを表示", { exact: true }).first().click();
+  await page.getByText("View source email", { exact: true }).first().click();
   await expect(
     page.getByText(
-      "9月分の業務委託費20万円の請求書をお送りします。9月22日12時までのお支払いをお願いいたします。",
+      "Please find attached the invoice for September design services totaling JPY 200,000. Payment is due by September 22 at 12:00 JST.",
       { exact: true },
     ),
   ).toBeVisible();
   await expect(
-    page.getByText("自動支払いの設定案", { exact: true }),
+    page.getByText("Automatic payment proposal", { exact: true }),
   ).toBeVisible();
   await page.goto("/invoices");
   await expect(
     page.getByText(
-      "支払い条件に同意すると、対象の請求書がここに表示されます。",
+      "Eligible invoices appear here once you approve the payment terms.",
       { exact: true },
     ),
   ).toBeVisible();

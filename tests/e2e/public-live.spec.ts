@@ -26,19 +26,19 @@ test("Sepolia principal round trip with Anvil TD and on-chain receipts", async (
   };
   await post("/api/demo/reset", {});
   await page.goto("/");
-  await expect(page.getByText(/Sepolia接続デモ/)).toBeVisible();
+  await expect(page.getByText(/Sepolia demo/)).toBeVisible();
   let messages = await post("/api/chat/messages", {
-    text: "サンプルメールの閲覧を許可して確認して",
+    text: "I allow access to my emails. Please check the invoices.",
   });
   await approveApi(page.request, messages.at(-1).data.input, origin);
   messages = await post("/api/chat/messages", {
-    text: "サンプルメールの閲覧を許可して確認して",
+    text: "I allow access to my emails. Please check the invoices.",
   });
   const proposal = (
     messages as { kind: string; data?: { proposal: { id: string } } }[]
   ).findLast((m) => m.kind === "proposal")!.data!.proposal;
   await post("/api/chat/messages", {
-    text: "そうしてください",
+    text: "Confirm these settings",
     proposalId: proposal.id,
   });
   await approveApi(
@@ -50,12 +50,14 @@ test("Sepolia principal round trip with Anvil TD and on-chain receipts", async (
     type: "due_date_reached",
     requestId: crypto.randomUUID(),
   });
-  messages = await post("/api/chat/messages", { text: "余力を運用したい" });
+  messages = await post("/api/chat/messages", {
+    text: "Invest my available funds",
+  });
   const investment = (
     messages as { kind: string; data?: { proposal: { id: string } } }[]
   ).findLast((m) => m.kind === "proposal")!.data!.proposal;
   await post("/api/chat/messages", {
-    text: "そうしてください",
+    text: "Confirm these settings",
     proposalId: investment.id,
   });
   const before = await (await page.request.get("/api/dashboard")).json();
@@ -81,7 +83,7 @@ test("Sepolia principal round trip with Anvil TD and on-chain receipts", async (
     path: "/tmp/td-sepolia-live-investment.png",
     fullPage: true,
   });
-  await post("/api/chat/messages", { text: "運用分を全部TDに戻して" });
+  await post("/api/chat/messages", { text: "Redeem all investments to TD" });
   const after = await (await page.request.get("/api/dashboard")).json();
   expect(after.td).toBe("800000");
   expect(after.locked).toBe("0");
@@ -89,7 +91,7 @@ test("Sepolia principal round trip with Anvil TD and on-chain receipts", async (
   expect(after.treasuryUsdc).toBe(before.treasuryUsdc);
   await page.goto("/investment");
   await expect(page.getByText(/Base Sepolia/)).toBeVisible();
-  await expect(page.getByText("¥800,000", { exact: true })).toBeVisible();
+  await expect(page.locator("main").getByText("¥800,000", { exact: true })).toBeVisible();
   await page.screenshot({
     path: "/tmp/td-sepolia-live-redeemed.png",
     fullPage: true,

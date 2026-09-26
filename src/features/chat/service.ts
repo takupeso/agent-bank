@@ -40,19 +40,32 @@ export async function chat(
     accountId: principal.accountId,
     credentialId: principal.credentialId,
   });
+  const aliases: Record<string, string> = {
+    "I allow access to my emails. Please check the invoices.":
+      "Authorize and review sample emails",
+    "メールの閲覧を許可します。請求書を確認して":
+      "Authorize and review sample emails",
+    サンプルメールの閲覧を許可して確認して:
+      "Authorize and review sample emails",
+    余力を運用したい: "Invest my available funds",
+    そうしてください: "Confirm these settings",
+    はい: "Yes",
+    運用分を全部TDに戻して: redemptionRequest,
+  };
+  text = Object.hasOwn(aliases, text) ? aliases[text] : text;
   const request = [
-    "サンプルメールの閲覧を許可して確認して",
+    "Authorize and review sample emails",
     redemptionRequest,
-    "余力を運用したい",
-    "そうしてください",
-    "はい",
+    "Invest my available funds",
+    "Confirm these settings",
+    "Yes",
     "OK",
   ].includes(text)
     ? "other"
     : await classifyRequest(text);
   requirePrincipal(principal, "human");
   if (
-    text === "サンプルメールの閲覧を許可して確認して" ||
+    text === "Authorize and review sample emails" ||
     request === "read_mail"
   ) {
     const agent = internalAgentPrincipal();
@@ -70,7 +83,7 @@ export async function chat(
       ]);
       message(
         "assistant",
-        "サンプルメールの閲覧を許可しますか？",
+        "Allow access to the sample emails?",
         "mail-permission-request",
         { proposalId: proposal.id, mailIds: proposal.conditions.mailIds },
       );
@@ -79,7 +92,7 @@ export async function chat(
       requirePrincipal(principal, "human");
       message(
         "assistant",
-        "許可されたメールから請求書を確認しました。",
+        "I found invoices in the authorized emails.",
         "invoices",
         {
           invoices,
@@ -89,14 +102,14 @@ export async function chat(
       const proposal = proposePayment(agent);
       message(
         "assistant",
-        "アオバデザイン（1件20万円・月合計20万円）とサクラオフィス（1件10万円・月合計10万円）への支払いを、期日に自動化しますか？",
+        "Automate payments on their due dates to Aoba Design (¥200,000 per payment and per month) and Sakura Office (¥100,000 per payment and per month)?",
         "proposal",
         { proposal },
       );
       const investment = await proposeInvestment(agent);
       message(
         "assistant",
-        `必要資金と予備資金を残し、1回¥${BigInt(investment.proposal.conditions.maxInvestmentJpy).toLocaleString("ja-JP")}を上限に運用しますか？`,
+        `Keep required funds and a safety buffer, and invest up to ¥${BigInt(investment.proposal.conditions.maxInvestmentJpy).toLocaleString("en-US")} per investment?`,
         "proposal",
         investment,
       );
@@ -104,18 +117,24 @@ export async function chat(
   } else if (text === redemptionRequest) {
     const request = createRedemptionRequest(principal);
     await redeem(internalAgentPrincipal(), request.id);
-  } else if (text === "余力を運用したい" || request === "propose_investment") {
+  } else if (
+    text === "Invest my available funds" ||
+    request === "propose_investment"
+  ) {
     const { proposal, snapshot } = await proposeInvestment(
       internalAgentPrincipal(),
     );
     requirePrincipal(principal, "human");
     message(
       "assistant",
-      `必要資金と予備資金を残し、1回¥${BigInt(proposal.conditions.maxInvestmentJpy).toLocaleString("ja-JP")}を上限に運用しますか？`,
+      `Keep required funds and a safety buffer, and invest up to ¥${BigInt(proposal.conditions.maxInvestmentJpy).toLocaleString("en-US")} per investment?`,
       "proposal",
       { proposal, snapshot },
     );
-  } else if (["そうしてください", "はい", "OK"].includes(text) && proposalId) {
+  } else if (
+    ["Confirm these settings", "Yes", "OK"].includes(text) &&
+    proposalId
+  ) {
     const proposal = get<Proposal>("proposals", proposalId);
     if (!proposal || proposal.status !== "proposed")
       throw new Error("Pending proposal required");
@@ -133,8 +152,8 @@ export async function chat(
     message(
       "assistant",
       setup
-        ? "支払いと運用の条件をまとめて確認してください。"
-        : "具体的な条件を確認して承認してください。",
+        ? "Review the payment and investment terms together."
+        : "Review and approve the specific terms.",
       "approval-request",
       {
         input: setup
@@ -149,7 +168,7 @@ export async function chat(
   } else
     message(
       "assistant",
-      "サンプルメールの閲覧を許可すると、請求書の内容を確認できます。",
+      "Authorize access to the sample emails to review their invoices.",
     );
   requirePrincipal(principal, "human");
   return all<Message>("messages");

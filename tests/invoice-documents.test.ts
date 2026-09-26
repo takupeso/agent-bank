@@ -24,6 +24,22 @@ test("every sample has a PDF matching its current invoice fields", () => {
       readFileSync(`public${document.url}`).subarray(0, 5).toString(),
       "%PDF-",
     );
+    const legacyIssuer =
+      mail.attachment.recipientId === "aoba"
+        ? "アオバデザイン"
+        : "サクラオフィス";
+    assert.equal(
+      invoiceDocument({ ...invoice, issuer: legacyIssuer }),
+      document,
+    );
+    assert.equal(
+      invoiceDocument({ ...invoice, issuer: "Unknown issuer" }),
+      undefined,
+    );
+    assert.equal(
+      invoiceDocument({ ...invoice, issuer: legacyIssuer, amountJpy: "1" }),
+      undefined,
+    );
     assert.equal(invoiceDocument({ ...invoice, amountJpy: "1" }), undefined);
     assert.equal(
       invoiceDocument({ ...invoice, dueAt: "2026-10-01T00:00:00.000Z" }),

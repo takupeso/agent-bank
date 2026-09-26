@@ -1,17 +1,10 @@
 "use client";
 import { apiFetch, apiPost } from "../api-client";
 import { WorldApproval, type WorldRequest } from "../world-approval";
-import { DemoEvent, RunDetails } from "./demo-event";
+import { DemoEvent } from "./demo-event";
 import { Conditions, ProposalCard } from "./rule-card";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type {
-  Message,
-  Invoice,
-  Mail,
-  Proposal,
-  Rule,
-  Run,
-} from "@/shared/domain";
+import type { Message, Invoice, Mail, Proposal, Rule } from "@/shared/domain";
 export function AgentPanel() {
   const conversation = useRef<HTMLElement>(null);
   const tools = useRef<HTMLDetailsElement>(null);
@@ -67,7 +60,7 @@ export function AgentPanel() {
       });
       if (!r.ok)
         throw new Error(
-          "処理を完了できませんでした。現在の設定と実行記録を確認してください。",
+          "Unable to complete the operation. Check your settings and execution records.",
         );
       const remainingDelay = 1000 - (Date.now() - startedAt);
       if (remainingDelay > 0)
@@ -113,11 +106,11 @@ export function AgentPanel() {
     return proposalIndex > ruleIndex;
   }
   return (
-    <aside id="agent-panel" className="agent-panel" aria-label="Agentチャット">
+    <aside id="agent-panel" className="agent-panel" aria-label="Agent chat">
       <header className="agent-panel-header">
         <div>
           <h2>Agent</h2>
-          <p>依頼や確認をいつでも送れます</p>
+          <p>Send a request or ask a question anytime</p>
         </div>
       </header>
       <section
@@ -127,8 +120,20 @@ export function AgentPanel() {
       >
         {messages.map((m) => (
           <article className={"message " + m.role} key={m.id}>
-            <small>{m.role === "user" ? "あなた" : "Agent"}</small>
-            <p>{m.text}</p>
+            <small>{m.role === "user" ? "You" : "Agent"}</small>
+            <p>
+              {m.text
+                .replace(
+                  /^¥([\d,]+) locked in the reserve account; [\d,.]+ test USDC equivalent invested in (Aave on Sepolia|simulation)\.$/,
+                  (_, amount: string, destination: string) =>
+                    `Started investing ¥${amount} from your deposit account in Aave.${destination === "simulation" ? " (Simulation)" : ""}`,
+                )
+                .replace(
+                  /^¥([\d,]+)を別段口座にlockし、[\d,.]+擬似USDC相当を(SepoliaのAaveで運用しました|模擬運用しました)。$/,
+                  (_, amount: string, destination: string) =>
+                    `Started investing ¥${amount} from your deposit account in Aave.${destination === "模擬運用しました" ? " (Simulation)" : ""}`,
+                )}
+            </p>
             {m.kind === "invoices" &&
               (m.data?.invoices as Invoice[]).map((i) => {
                 const mail = (m.data?.emails as Mail[] | undefined)?.find(
@@ -138,14 +143,14 @@ export function AgentPanel() {
                   <div className="card" key={i.id}>
                     <b>{i.issuer}</b>
                     <p>
-                      ¥{BigInt(i.amountJpy).toLocaleString()} · 支払期日{" "}
-                      {new Date(i.dueAt).toLocaleString("ja-JP", {
+                      ¥{BigInt(i.amountJpy).toLocaleString("en-US")} · Due date{" "}
+                      {new Date(i.dueAt).toLocaleString("en-US", {
                         timeZone: "Asia/Tokyo",
                       })}
                     </p>
                     {mail && (
                       <details>
-                        <summary>元メールを表示</summary>
+                        <summary>View source email</summary>
                         <p>
                           {mail.sender} · {mail.subject}
                         </p>
@@ -155,7 +160,6 @@ export function AgentPanel() {
                   </div>
                 );
               })}
-            {m.kind === "execution" && <RunDetails run={m.data?.run as Run} />}
             {m.kind === "proposal" && (
               <ProposalCard
                 proposal={m.data?.proposal as Proposal}
@@ -166,18 +170,7 @@ export function AgentPanel() {
             )}
             {m.kind === "rule" && (
               <div className="card">
-                <b>承認時の設定</b>
-                <p>
-                  承認方法：
-                  {(m.data?.rule as Rule).authorization?.approvalMethod ===
-                  "local-demo"
-                    ? "デモ承認（World省略）"
-                    : (m.data?.rule as Rule).authorization?.approvalMethod ===
-                        "world"
-                      ? "World確認"
-                      : "未確認（再承認が必要）"}{" "}
-                  · 承認時の条件
-                </p>
+                <b>Approval</b>
                 <Conditions rule={m.data?.rule as Rule} />
               </div>
             )}
@@ -185,7 +178,7 @@ export function AgentPanel() {
         ))}
         {pendingText && (
           <article className="message user pending-message">
-            <small>あなた</small>
+            <small>You</small>
             <p>{pendingText}</p>
           </article>
         )}
@@ -193,7 +186,7 @@ export function AgentPanel() {
           <article
             className="message agent typing-indicator"
             role="status"
-            aria-label="Agentが返信を作成中"
+            aria-label="Agent is preparing a reply"
           >
             <small>Agent</small>
             <span className="typing-dots" aria-hidden="true">
@@ -205,7 +198,7 @@ export function AgentPanel() {
         )}
       </section>
       <details ref={tools} className="agent-tools">
-        <summary>デモ操作とよく使う依頼</summary>
+        <summary>Demo actions and common requests</summary>
         <div
           className="quick-actions"
           onClick={(event) => {
@@ -220,9 +213,11 @@ export function AgentPanel() {
         >
           <button
             disabled={busy || !!approval || !!mailPermission}
-            onClick={() => send("サンプルメールの閲覧を許可して確認して")}
+            onClick={() =>
+              send("I allow access to my emails. Please check the invoices.")
+            }
           >
-            サンプルメールの閲覧を許可して確認
+            I allow access to my emails. Please check the invoices.
           </button>
           <button
             disabled={
@@ -231,14 +226,14 @@ export function AgentPanel() {
               !!mailPermission ||
               !hasUnacceptedProposal("payment")
             }
-            onClick={() => send("そうしてください")}
+            onClick={() => send("Confirm these settings")}
           >
-            そうしてください（支払い設定）
+            Confirm payment setup
           </button>
           <DemoEvent
             onError={setError}
             type="due_date_reached"
-            label="デモ：支払期日を迎える"
+            label="Demo: advance to payment due date"
             onComplete={() => {
               window.dispatchEvent(new Event("agent-bank:invoices-updated"));
               apiFetch("/api/chat/messages").then(async (r) => {
@@ -250,9 +245,9 @@ export function AgentPanel() {
           />
           <button
             disabled={busy || !!approval || !!mailPermission}
-            onClick={() => send("余力を運用したい")}
+            onClick={() => send("Invest my available funds")}
           >
-            余力を運用したい
+            Invest my available funds
           </button>
           <button
             disabled={
@@ -261,14 +256,14 @@ export function AgentPanel() {
               !!mailPermission ||
               !hasUnacceptedProposal("investment")
             }
-            onClick={() => send("そうしてください")}
+            onClick={() => send("Confirm these settings")}
           >
-            そうしてください（運用設定）
+            Confirm investment setup
           </button>
           <DemoEvent
             onError={setError}
             type="surplus_check"
-            label="デモ：余力をチェック"
+            label="Demo: check available funds"
             onComplete={() => {
               window.dispatchEvent(new Event("agent-bank:invoices-updated"));
               apiFetch("/api/chat/messages").then(async (r) => {
@@ -280,9 +275,9 @@ export function AgentPanel() {
           />
           <button
             disabled={busy || !!approval || !!mailPermission}
-            onClick={() => send("運用分を全部TDに戻して")}
+            onClick={() => send("Redeem all investments to TD")}
           >
-            運用分を全部TDに戻して
+            Redeem all investments to TD
           </button>
         </div>
       </details>
@@ -293,38 +288,41 @@ export function AgentPanel() {
           void send(text);
         }}
       >
-        <label htmlFor="chat-input">Agentへの依頼</label>
+        <label htmlFor="chat-input">Message the agent</label>
         <div className="composer">
           <input
             id="chat-input"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="メールを確認して、支払いを自動化して"
+            placeholder="Review my emails and automate payments"
           />
           <button
             disabled={busy || !!approval || !!mailPermission || !text.trim()}
           >
-            送信
+            Send
           </button>
         </div>
       </form>
       {mailPermission && (
         <section
           className="panel approval-policy"
-          aria-label="メール閲覧の確認"
+          aria-label="Email access confirmation"
         >
-          <h2>メール閲覧を許可</h2>
-          <p>対象Agent：bank-agent</p>
-          <p>許可する操作：業務データ参照・条件の提案・指定メールの閲覧</p>
+          <h2>Allow email access</h2>
+          <p>Agent: bank-agent</p>
           <p>
-            閲覧範囲：
+            Allowed actions: read banking data, propose terms, and read selected
+            emails
+          </p>
+          <p>
+            Email access:{" "}
             {mailPermission.mailIds
               .map((id) =>
                 id === "aoba-mail"
-                  ? "アオバデザインのサンプルメール"
-                  : "サクラオフィスのサンプルメール",
+                  ? "Aoba Design sample email"
+                  : "Sakura Office sample email",
               )
-              .join("・")}
+              .join(", ")}
           </p>
           <div className="approval-actions">
             <button
@@ -345,13 +343,13 @@ export function AgentPanel() {
                 }
               }}
             >
-              この内容で許可して確認
+              Authorize and review
             </button>
             <button
               disabled={busy}
               onClick={() => setMailPermission(undefined)}
             >
-              キャンセル
+              Cancel
             </button>
           </div>
         </section>
@@ -361,7 +359,7 @@ export function AgentPanel() {
           input={approval.input}
           onCancel={() => {
             setApproval(undefined);
-            setError("承認をキャンセルしました。設定は変更されていません。");
+            setError("Approval canceled. Your settings have not changed.");
           }}
           onApproved={async () => {
             const completed = approval;
@@ -373,7 +371,7 @@ export function AgentPanel() {
               window.dispatchEvent(new Event("agent-bank:rules-updated"));
               const response = await apiFetch("/api/chat/messages");
               if (!response.ok)
-                throw new Error("最新の会話を取得できませんでした。");
+                throw new Error("Unable to load the latest conversation.");
               setMessages(await response.json());
             }
           }}

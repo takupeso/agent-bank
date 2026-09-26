@@ -26,6 +26,7 @@ export function WorldWidget({
   onError: (code: IDKitErrorCodes, report?: IDKitDebugReport) => void;
 }) {
   const shared = {
+    language: "en" as const,
     open,
     onOpenChange,
     app_id: challenge.appId,

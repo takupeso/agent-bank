@@ -3,8 +3,8 @@ test("public wallet survives reset and is shown without secrets", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /デモを(初期化|リセット)/ }).click();
-  await expect(page.getByText("¥1,000,000", { exact: true })).toBeVisible({
+  await page.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
+  await expect(page.locator("main").getByText("¥1,000,000", { exact: true })).toBeVisible({
     timeout: 60000,
   });
   const first = await (await page.request.get("/api/dashboard")).json();
@@ -13,10 +13,10 @@ test("public wallet survives reset and is shown without secrets", async ({
   expect(JSON.stringify(first)).not.toMatch(
     /ciphertext|privateKey|CUSTODY_MASTER_KEY/,
   );
-  await page.getByRole("button", { name: "デモをリセット" }).click();
-  await expect(
-    page.getByRole("button", { name: "デモをリセット" }),
-  ).toBeEnabled({ timeout: 60000 });
+  await page.getByRole("button", { name: "Reset demo" }).click();
+  await expect(page.getByRole("button", { name: "Reset demo" })).toBeEnabled({
+    timeout: 60000,
+  });
   const second = await (await page.request.get("/api/dashboard")).json();
   expect(second.publicWallet).toEqual(first.publicWallet);
   await page.screenshot({ path: "/tmp/td-sepolia-wallet.png", fullPage: true });

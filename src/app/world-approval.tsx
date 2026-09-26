@@ -53,6 +53,7 @@ export type Challenge = {
   sessionId?: `session_${string}`;
   policy?: Policy;
 };
+const yen = (value: string) => `¥${BigInt(value).toLocaleString("en-US")}`;
 type DemoChallenge = { id: string; policy: Policy; expiresAt: number };
 export function WorldApproval({
   input,
@@ -78,12 +79,12 @@ export function WorldApproval({
     let active = true;
     void apiFetch("/api/world")
       .then(async (response) => {
-        if (!response.ok) throw new Error("World設定を取得できませんでした。");
+        if (!response.ok) throw new Error("Unable to load World settings.");
         const status: WorldStatus = await response.json();
         if (!active) return;
         setWorld(status);
         if (!status.configured || !status.enrolled) {
-          setError("Worldが未設定または未登録です。");
+          setError("World is not configured or enrolled.");
           return;
         }
         const result = await apiPost("/api/world", { action: "begin", input });
@@ -166,141 +167,191 @@ export function WorldApproval({
   const c = conditions && "id" in conditions ? conditions : undefined;
   const investment = policy?.investmentConditions;
   const names: Record<string, string> = {
-    read: "業務データ参照",
-    propose: "条件の提案",
-    mail: "指定メールの閲覧",
-    payment: "承認条件内の支払い",
-    investment: "承認条件内の運用",
-    redemption: "本人依頼に基づく償還",
+    read: "Read banking data",
+    propose: "Propose terms",
+    mail: "Read selected emails",
+    payment: "Payments within approved terms",
+    investment: "Investments within approved terms",
+    redemption: "Redemptions at your request",
   };
   return (
-    <section className="panel approval-policy" aria-label="World承認">
-      <h2>この内容を承認</h2>
-      <p>銀行が保存した対象と条件を確認してください。承認後に反映されます。</p>
+    <section className="panel approval-policy" aria-label="World approval">
+      <h2>Approve these terms</h2>
+      <p>
+        Review the targets and terms saved by the bank. They take effect after
+        approval.
+      </p>
       {((c?.id === "investment" && c.enabled) || investment?.enabled) && (
-        <p>承認すると、条件内の余力をAaveへ預け入れます。</p>
+        <p>Approval deposits available funds into Aave within these terms.</p>
       )}
       {policy && (
-        <div className="card">
-          <p>
-            口座：{policy.accountId} / 対象Agent：{policy.agentId}
-          </p>
-          <p>
-            許可する操作：{policy.scopes.map((s) => names[s] ?? s).join("・")}
-          </p>
+        <div className="approval-summary">
+          <section className="approval-section">
+            <h3>Allowed actions</h3>
+            <p>{policy.scopes.map((s) => names[s] ?? s).join(", ")}</p>
+            {c && (
+              <p className="approval-caption">
+                {c.enabled ? "Enable" : "Pause"} · Version{" "}
+                {policy.baseVersion + 1}
+              </p>
+            )}
+          </section>
           {conditions && "mailIds" in conditions && (
-            <p>
-              閲覧範囲：
-              {conditions.mailIds
-                .map((id) =>
-                  id === "aoba-mail"
-                    ? "アオバデザインのサンプルメール"
-                    : id === "sakura-mail"
-                      ? "サクラオフィスのサンプルメール"
-                      : id,
-                )
-                .join("・")}
-            </p>
+            <section className="approval-section">
+              <h3>Email access</h3>
+              <ul>
+                {conditions.mailIds.map((id) => (
+                  <li key={id}>
+                    {id === "aoba-mail"
+                      ? "Aoba Design sample email"
+                      : id === "sakura-mail"
+                        ? "Sakura Office sample email"
+                        : id}
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
-          {c && (
-            <>
-              <p>
-                {c.enabled ? "有効にする" : "停止する"} · 第
-                {policy.baseVersion + 1}版
+          {c?.id === "payment" && (
+            <section className="approval-section">
+              <h3>Payees and payment limits</h3>
+              <p className="approval-caption">
+                Internal transfer within Agent Bank · 1 TD = ¥1
               </p>
-              {c.id === "payment" && (
-                <>
-                  <p>
-                    支払先：
-                    {(c.paymentRecipients ?? [{ recipientId: c.recipientId }])
-                      .map((r) =>
-                        r.recipientId === "aoba"
-                          ? "アオバデザイン"
-                          : "サクラオフィス",
-                      )
-                      .join("・")}
-                  </p>
-                  <p className="hash">{policy.target.recipient}</p>
-                  {(
-                    c.paymentRecipients ?? [
-                      {
-                        recipientId: c.recipientId,
-                        maxPaymentJpy: c.maxPaymentJpy,
-                        monthlyLimitJpy: c.monthlyLimitJpy,
-                      },
-                    ]
-                  ).map((r) => (
-                    <p key={r.recipientId}>
-                      {r.recipientId === "aoba"
-                        ? "アオバデザイン"
-                        : "サクラオフィス"}
-                      ：1件 ¥{r.maxPaymentJpy} / 月合計：¥{r.monthlyLimitJpy} ·
-                      期日払い
-                    </p>
-                  ))}
-                </>
-              )}
-              <p>
-                最低残高：¥{c.minimumBalanceJpy} / 予備資金：¥
-                {c.safetyBufferJpy}
-              </p>
-              {c.id === "investment" && (
-                <>
-                  <p>1回の運用上限：¥{c.maxInvestmentJpy}</p>
-                  <p>
-                    運用先：{policy.target.investment.protocol} ·{" "}
-                    {policy.target.investment.mode === "stub"
-                      ? "模擬運用"
-                      : `Chain ${policy.target.investment.chainId}`}
-                  </p>
-                  <p className="hash">
-                    Pool: {policy.target.investment.pool}
+              {(
+                c.paymentRecipients ?? [
+                  {
+                    recipientId: c.recipientId,
+                    maxPaymentJpy: c.maxPaymentJpy,
+                    monthlyLimitJpy: c.monthlyLimitJpy,
+                  },
+                ]
+              ).map((r) => (
+                <div className="approval-recipient" key={r.recipientId}>
+                  <h4>
+                    {r.recipientId === "aoba" ? "Aoba Design" : "Sakura Office"}
+                  </h4>
+                  <p className="approval-caption">
+                    Agent Bank · Harp Branch
                     <br />
-                    Token: {policy.target.investment.token}
+                    Deposit account{" "}
+                    {r.recipientId === "aoba" ? "0000001" : "0000002"} (demo)
                   </p>
-                </>
-              )}
-            </>
+                  <dl className="approval-fields">
+                    <div>
+                      <dt>Per-payment limit</dt>
+                      <dd>{yen(r.maxPaymentJpy)}</dd>
+                    </div>
+                    <div>
+                      <dt>Monthly limit</dt>
+                      <dd>{yen(r.monthlyLimitJpy)}</dd>
+                    </div>
+                    <div>
+                      <dt>Payment date</dt>
+                      <dd>Invoice due date</dd>
+                    </div>
+                  </dl>
+                </div>
+              ))}
+            </section>
           )}
-          {investment && (
-            <div className="card">
-              <h3>
-                余力の自動運用 · 第{(policy.investmentBaseVersion ?? 0) + 1}版
-              </h3>
-              <p>
-                1回の運用上限：¥{investment.maxInvestmentJpy} / 予備資金：¥
-                {investment.safetyBufferJpy} / 最低残高：¥
-                {investment.minimumBalanceJpy}
-              </p>
-              <p>
-                運用先：{policy.target.investment.protocol} ·{" "}
-                {policy.target.investment.mode === "stub"
-                  ? "模擬運用"
-                  : `Chain ${policy.target.investment.chainId}`}
-              </p>
+          {(c?.id === "investment" || investment) && (
+            <section className="approval-section">
+              <h3>Investment destination and limit</h3>
+              {investment && (
+                <p className="approval-caption">
+                  {investment.enabled ? "Enable" : "Pause"} · Version{" "}
+                  {(policy.investmentBaseVersion ?? 0) + 1}
+                </p>
+              )}
+              <dl className="approval-fields">
+                <div>
+                  <dt>Destination</dt>
+                  <dd>{policy.target.investment.protocol}</dd>
+                </div>
+                <div>
+                  <dt>Network</dt>
+                  <dd>
+                    {policy.target.investment.mode === "stub"
+                      ? "Simulation"
+                      : policy.target.investment.chainId === 84532
+                        ? "Base Sepolia"
+                        : `Chain ${policy.target.investment.chainId}`}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Investment limit per transaction</dt>
+                  <dd>{yen((investment ?? c)!.maxInvestmentJpy)}</dd>
+                </div>
+              </dl>
+            </section>
+          )}
+          {[c, investment]
+            .filter((rule): rule is NonNullable<typeof c> => !!rule)
+            .map((rule) => (
+              <section className="approval-section" key={rule.id}>
+                <h3>
+                  Funds to keep ·{" "}
+                  {rule.id === "payment" ? "Payments" : "Investments"}
+                </h3>
+                <dl className="approval-fields">
+                  <div>
+                    <dt>Minimum balance</dt>
+                    <dd>{yen(rule.minimumBalanceJpy)}</dd>
+                  </div>
+                  <div>
+                    <dt>Safety buffer</dt>
+                    <dd>{yen(rule.safetyBufferJpy)}</dd>
+                  </div>
+                </dl>
+              </section>
+            ))}
+          <details className="approval-technical">
+            <summary>Account, agent, and destination details</summary>
+            <dl className="approval-fields">
+              <div>
+                <dt>Account</dt>
+                <dd>{policy.accountId}</dd>
+              </div>
+              <div>
+                <dt>Agent</dt>
+                <dd>{policy.agentId}</dd>
+              </div>
+            </dl>
+            {c?.id === "payment" && (
+              <>
+                <p>Recipient address (local Anvil)</p>
+                <p className="hash">{policy.target.recipient}</p>
+                <p className="approval-caption">
+                  Account numbers are fictional samples. Both demo payees share
+                  one recipient address for transfer verification.
+                </p>
+              </>
+            )}
+            {(c?.id === "investment" || investment) && (
               <p className="hash">
                 Pool: {policy.target.investment.pool}
                 <br />
                 Token: {policy.target.investment.token}
               </p>
-            </div>
-          )}
+            )}
+          </details>
         </div>
       )}
       <div className="approval-actions">
         {challenge && !demo && (
           <>
             <p>
-              確認期限：
+              Verification expires:{" "}
               {new Date(
                 challenge.rpContext.expires_at * 1000,
-              ).toLocaleTimeString("ja-JP")}
+              ).toLocaleTimeString("en-US")}
             </p>
             <button
               disabled={busy || open || !!error}
               onClick={() => setOpen(true)}
             >
-              Worldで確認して承認
+              Verify with World and approve
             </button>
             <WorldWidget
               challenge={challenge}
@@ -313,10 +364,12 @@ export function WorldApproval({
                     action: "cancel",
                     id: challenge.id,
                   }).catch((e) => setError(String(e)));
-                  setError("World確認を閉じました。設定は未反映です。");
+                  setError(
+                    "World verification closed. Settings have not been applied.",
+                  );
                 }
               }}
-              description="表示した権限と条件の承認"
+              description="Approve the displayed permissions and terms"
               handleVerify={async (proof) => {
                 const attempt = challenge.attempt;
                 if (attempt !== generation.current) return;
@@ -339,7 +392,7 @@ export function WorldApproval({
                 } catch (e) {
                   if (attempt === generation.current)
                     setError(
-                      "結果を確認できませんでした。チャットと実行記録を確認してください。",
+                      "Unable to confirm the result. Check the chat and execution records.",
                     );
                   throw e;
                 } finally {
@@ -355,7 +408,7 @@ export function WorldApproval({
                   at: report?.generated_at,
                 });
                 setError(
-                  `Worldで確認できませんでした（${code}）。新しい確認またはデモ継続を選んでください。`,
+                  `World verification failed (${code}). Start a new verification or continue as a demo.`,
                 );
               }}
             />
@@ -363,14 +416,15 @@ export function WorldApproval({
         )}
         {world?.authMode === "local-demo" && !demo && (
           <button disabled={busy} onClick={() => void startDemo()}>
-            デモとして続ける
+            Continue as demo
           </button>
         )}
         {demo && (
           <>
             <p>
-              デモ承認：Worldでの人間であることの確認を省略します。確認期限：
-              {new Date(demo.expiresAt * 1000).toLocaleTimeString("ja-JP")}
+              Demo approval: skips World proof of humanity. Verification
+              expires:{" "}
+              {new Date(demo.expiresAt * 1000).toLocaleTimeString("en-US")}
             </p>
             <button
               disabled={busy}
@@ -399,14 +453,14 @@ export function WorldApproval({
             >
               {busy
                 ? (c?.id === "investment" && c.enabled) || investment?.enabled
-                  ? "承認・運用開始中…"
-                  : "承認中…"
-                : "この内容をデモ承認"}
+                  ? "Approving and starting investment…"
+                  : "Approving…"
+                : "Approve these terms in demo"}
             </button>
           </>
         )}
         <button disabled={busy} onClick={() => void cancel()}>
-          キャンセル
+          Cancel
         </button>
       </div>
       {error && <p role="alert">{error}</p>}

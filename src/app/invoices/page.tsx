@@ -29,48 +29,48 @@ export default function Invoices() {
   return (
     <>
       <header>
-        <h1>送金予定</h1>
-        <p>支払い設定済みの請求書と、その送金状況・根拠。</p>
+        <h1>Payments</h1>
+        <p>Configured payments and their payment status.</p>
       </header>
       {data.invoices.map((i) => (
         <section className="panel" id={i.id} key={i.id}>
           <span className="badge">
-            {i.status === "paid" ? "支払済み" : "支払い予定"}
+            {i.status === "paid" ? "Paid" : "Scheduled"}
           </span>
           <h2>{i.issuer}</h2>
-          <strong>¥{BigInt(i.amountJpy).toLocaleString()}</strong>
+          <strong>¥{BigInt(i.amountJpy).toLocaleString("en-US")}</strong>
           <p>
-            期日：
-            {new Date(i.dueAt).toLocaleString("ja-JP", {
+            Due:{" "}
+            {new Date(i.dueAt).toLocaleString("en-US", {
               timeZone: "Asia/Tokyo",
             })}
           </p>
           <details>
-            <summary>元メールを表示</summary>
+            <summary>View source email</summary>
             <p>{data.emails.find((m) => m.id === i.emailId)?.body}</p>
           </details>
           <div className="invoice-attachment">
             <div>
-              <strong>添付請求書</strong>
+              <strong>Attached invoice</strong>
               <p>{i.number}</p>
             </div>
             {invoiceDocument(i) ? (
               <button
                 type="button"
                 onClick={() => setSelected(i)}
-                aria-label={`${i.issuer}の請求書を見る`}
+                aria-label={`${i.issuer} invoice preview`}
               >
-                請求書を見る
+                View invoice
               </button>
             ) : (
-              <p>この請求書のPDFは準備されていません。</p>
+              <p>A PDF is not available for this invoice.</p>
             )}
           </div>
         </section>
       ))}
       {!data.invoices.length && (
         <section className="panel">
-          支払い条件に同意すると、対象の請求書がここに表示されます。
+          Eligible invoices appear here once you approve the payment terms.
         </section>
       )}
       <dialog
@@ -83,28 +83,28 @@ export default function Invoices() {
           <>
             <div className="invoice-preview-header">
               <div>
-                <h2 id="invoice-preview-title">{selected.issuer}の請求書</h2>
-                <p>{selected.number} · デモ用サンプル</p>
+                <h2 id="invoice-preview-title">{selected.issuer} invoice</h2>
+                <p>{selected.number} · Demo sample</p>
               </div>
               <button
                 type="button"
                 className="secondary"
                 onClick={() => setSelected(null)}
               >
-                閉じる
+                Close
               </button>
             </div>
             <div className="invoice-preview-actions">
               <a href={document.url} target="_blank" rel="noopener noreferrer">
-                別タブで開く
+                Open in new tab
               </a>
               <a href={document.url} download={`${selected.number}.pdf`}>
-                ダウンロード
+                Download
               </a>
-              <span>表示されない場合は別タブで開いてください。</span>
+              <span>If the preview does not load, open it in a new tab.</span>
             </div>
             <iframe
-              title={`${selected.issuer}の請求書PDF`}
+              title={`${selected.issuer} invoice PDF`}
               src={`${document.url}#view=FitH`}
             />
           </>
