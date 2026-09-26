@@ -75,7 +75,7 @@ pnpm sepolia fund 0.002 --send
 
 ## 公開デモ（Cloudflare Containers）
 
-ETHGlobal等で誰でも触れるデモとして、Cloudflare Containersへデプロイできます。訪問者ごとに使い捨てのコンテナ（アプリ＋ローカルAnvil＋SQLite、資産はstub）を割り当て、他の訪問者と状態を共有しません。コンテナは10分操作がないと停止し、状態は破棄されます。
+ETHGlobal等で誰でも触れるデモとして、Cloudflare Containersへデプロイできます。訪問者ごとに使い捨てのコンテナ（アプリ＋ローカルAnvil＋SQLite、資産はstub）を割り当て、他の訪問者と状態を共有しません。コンテナは2時間操作がないと停止し、状態は破棄されます。
 
 ```sh
 pnpm exec wrangler login

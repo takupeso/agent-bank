@@ -22,7 +22,7 @@ type Env = Partial<Record<(typeof forwarded)[number], string>> & {
 // One disposable sandbox per visitor; state disappears when it sleeps.
 export class BankSandbox extends Container<Env> {
   defaultPort = 8080;
-  sleepAfter = "10m";
+  sleepAfter = "2h";
 
   override async fetch(request: Request) {
     const envVars = Object.fromEntries(
