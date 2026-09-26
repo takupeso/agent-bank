@@ -1,6 +1,7 @@
 "use client";
 import { apiFetch } from "./api-client";
 import { formatUsdc } from "@/shared/format";
+import { MoneyFlow } from "./money-flow";
 import type { AccountMovement } from "@/shared/domain";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -168,6 +169,16 @@ export default function Home() {
           Initialize the demo to fund Account A, then follow the next step in
           the agent panel.
         </p>
+      )}
+
+      {data.initialized && (
+        <MoneyFlow
+          movements={movements}
+          td={data.td ?? "0"}
+          walletUsdc={data.looseUsdc ?? "0"}
+          aaveUsdc={data.positionUsdc ?? "0"}
+          simulated={data.mode !== "sepolia"}
+        />
       )}
 
       <div className="account-list">

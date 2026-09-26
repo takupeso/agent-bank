@@ -1583,3 +1583,275 @@ header p {
 .agent-journey.loading li {
   visibility: hidden;
 }
+
+/* Money flow */
+.money-flow {
+  margin-bottom: 14px;
+  padding: 20px 22px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.money-flow-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.money-flow-header h2 {
+  margin: 0;
+  font-size: 15px;
+}
+.money-flow-header button {
+  min-height: 32px;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+.flow-track {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr) minmax(28px, 0.4fr) minmax(0, 1fr) minmax(28px, 0.4fr)
+    minmax(0, 1fr) minmax(28px, 0.4fr) minmax(0, 1fr);
+  align-items: center;
+}
+.flow-node {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px 12px 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-2);
+  text-align: center;
+}
+.flow-node-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.flow-node-value {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.flow-node-note {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.flow-node.deposit {
+  border-color: #c7cdf8;
+  background: var(--accent-soft);
+}
+.flow-node.deposit .flow-node-value {
+  color: var(--accent-ink);
+}
+.flow-node.receiving {
+  animation: node-receive 1.4s ease-out;
+}
+@keyframes node-receive {
+  0%,
+  45% {
+    box-shadow: 0 0 0 0 #4f46e500;
+    transform: scale(1);
+  }
+  65% {
+    box-shadow: 0 0 0 6px #4f46e533;
+    border-color: var(--accent);
+    transform: scale(1.04);
+  }
+  100% {
+    box-shadow: 0 0 0 0 #4f46e500;
+    transform: scale(1);
+  }
+}
+.flow-line {
+  position: relative;
+  z-index: 2;
+  height: 28px;
+}
+.flow-line i {
+  position: absolute;
+  inset: 13px 4px auto;
+  height: 2px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--line-strong) 0 6px,
+    transparent 6px 10px
+  );
+}
+.flow-line.active i {
+  background: repeating-linear-gradient(
+    90deg,
+    #a5b4fc 0 6px,
+    transparent 6px 10px
+  );
+  background-size: 20px 2px;
+  animation: dash 0.5s linear infinite;
+}
+@keyframes dash {
+  to {
+    background-position: 20px 0;
+  }
+}
+.flow-coin {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: 1;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--gradient);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px #4f46e566;
+  transform: translate(-50%, -50%);
+  animation: coin-move 1.3s cubic-bezier(0.45, 0, 0.2, 1) forwards;
+}
+.flow-coin.reverse {
+  animation-name: coin-move-reverse;
+}
+.flow-line.pay .flow-coin {
+  background: linear-gradient(135deg, #059669, #10b981);
+  box-shadow: 0 4px 12px #05966966;
+}
+@keyframes coin-move {
+  0% {
+    left: 0;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+@keyframes coin-move-reverse {
+  0% {
+    left: 100%;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    left: 0;
+    opacity: 0;
+  }
+}
+.flow-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.agent-status.busy {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px #4f46e533;
+  animation: pulse 1s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    box-shadow: 0 0 0 6px #4f46e500;
+  }
+}
+@container main (max-width: 640px) {
+  .flow-track {
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+  }
+  .flow-line {
+    height: 34px;
+  }
+  .flow-line i {
+    inset: 4px auto 4px 50%;
+    width: 2px;
+    height: auto;
+    background: repeating-linear-gradient(
+      180deg,
+      var(--line-strong) 0 6px,
+      transparent 6px 10px
+    );
+  }
+  .flow-line.active i {
+    background: repeating-linear-gradient(
+      180deg,
+      #a5b4fc 0 6px,
+      transparent 6px 10px
+    );
+  }
+  .flow-coin,
+  .flow-coin.reverse {
+    left: 50%;
+    animation-name: coin-move-y;
+  }
+  .flow-coin.reverse {
+    animation-name: coin-move-y-reverse;
+  }
+  @keyframes coin-move-y {
+    0% {
+      top: 0;
+      opacity: 0;
+    }
+    20%,
+    80% {
+      opacity: 1;
+    }
+    100% {
+      top: 100%;
+      opacity: 0;
+    }
+  }
+  @keyframes coin-move-y-reverse {
+    0% {
+      top: 100%;
+      opacity: 0;
+    }
+    20%,
+    80% {
+      opacity: 1;
+    }
+    100% {
+      top: 0;
+      opacity: 0;
+    }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow-coin,
+  .flow-coin.reverse {
+    left: 50%;
+    top: 50%;
+    animation: none;
+  }
+  .flow-line.active i,
+  .flow-node.receiving,
+  .agent-status.busy {
+    animation: none;
+  }
+}
