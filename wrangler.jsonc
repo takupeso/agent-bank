@@ -11,7 +11,7 @@
   // Forwarded to each sandbox. Set GEMINI_API_KEY / WORLD_RP_SIGNING_KEY with
   // `wrangler secret put`, never here.
   "vars": {
-    "BANK_AUTH_MODE": "local-demo",
+    "BANK_AUTH_MODE": "world",
     "AI_MODE": "gemini",
     "GEMINI_MODEL": "gemini-3.5-flash-lite",
     "WORLD_MODE": "live",
