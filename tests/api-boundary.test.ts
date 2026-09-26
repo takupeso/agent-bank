@@ -60,7 +60,11 @@ test("every implemented protected method rejects anonymous and the opposite cred
       if (!new RegExp(`export (?:async )?function ${method}\\b`).test(source))
         continue;
       const policy = apiPolicy.find(
-        (p) => p.method === method && p.path.test(path),
+        (p) =>
+          p.method === method &&
+          p.path.test(
+            path.replace("[action]", method === "GET" ? "status" : "begin"),
+          ),
       );
       assert.ok(policy, `${method} ${path} must have an explicit policy`);
       if (policy.role === "public") continue;
