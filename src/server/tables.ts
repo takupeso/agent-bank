@@ -1,0 +1,18 @@
+export const tables = [
+  "mail_access_grants",
+  "emails",
+  "attachments",
+  "invoices",
+  "messages",
+  "proposals",
+  "rules",
+  "rule_versions",
+  "payment_history",
+  "intents",
+  "runs",
+  "cashflow_snapshots",
+  "investment_orders",
+  "redemption_orders",
+  "redemption_requests",
+  "execution_steps",
+] as const;

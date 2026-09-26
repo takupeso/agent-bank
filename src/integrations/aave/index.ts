@@ -1,0 +1,79 @@
+import { serialized } from "../../server/mutex";
+import "server-only";
+import { instance } from "../../server/records";
+import * as stub from "./stub";
+import * as sepolia from "./sepolia";
+export function mode() {
+  const m = instance().publicMode ?? "stub";
+  if (m !== "stub" && m !== "sepolia") throw new Error("Invalid asset mode");
+  return m;
+}
+export async function preflight(units: string) {
+  if (mode() === "sepolia") await sepolia.preflight(BigInt(units));
+}
+export function recordOrder(id: string, units: string, lockId: string) {
+  if (mode() === "sepolia")
+    sepolia.recordPublicOrder(id, instance().id, units, lockId);
+}
+export async function supplyAndDeposit(
+  id: string,
+  units: string,
+  guard: () => void,
+) {
+  if (mode() === "sepolia") return sepolia.supplyAndDeposit(id, units, guard);
+  const result = await serialized(() => {
+    guard();
+    return stub.supplyAndDeposit(id, units);
+  });
+  return {
+    id: result.id,
+    steps: [
+      {
+        label: "擬似USDC供給・Aave模擬預入",
+        mode: "stub" as const,
+        ref: result.id,
+      },
+    ],
+  };
+}
+export { balances } from "./sepolia";
+
+export async function withdrawAndReturn(
+  id: string,
+  orderId: string,
+  units: string,
+  guard: () => void,
+) {
+  if (mode() === "sepolia") {
+    const result = await sepolia.withdrawAndReturn(id, orderId, units, guard);
+    return {
+      ...result,
+      owner: instance().customer,
+      action: "withdraw-and-return",
+    };
+  }
+  const result = await serialized(() => {
+    guard();
+    return stub.withdrawAndReturn(id, units);
+  });
+  return {
+    ...result,
+    evidence: undefined,
+    steps: [
+      {
+        label: "Aave模擬引出し・銀行へ擬似USDC返却確認",
+        mode: "stub" as const,
+        ref: result.id,
+      },
+    ],
+  };
+}
+export async function verifyReturn(evidence: sepolia.Evidence | undefined) {
+  if (mode() === "sepolia") {
+    if (!evidence) throw new Error("Return evidence required");
+    await sepolia.confirmed(evidence);
+  }
+}
+export function markRedeemed(orderId: string) {
+  if (mode() === "sepolia") sepolia.markRedeemed(orderId);
+}

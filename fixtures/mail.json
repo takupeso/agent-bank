@@ -1,0 +1,30 @@
+[
+  {
+    "id": "aoba-mail",
+    "sender": "billing@aoba.example",
+    "subject": "9月分 業務委託費のご請求",
+    "body": "9月分の業務委託費20万円の請求書をお送りします。9月22日12時までのお支払いをお願いいたします。",
+    "attachment": {
+      "number": "AOBA-202609-001",
+      "issuer": "アオバデザイン",
+      "recipientId": "aoba",
+      "amountJpy": "200000",
+      "dueAt": "2026-09-22T03:00:00.000Z",
+      "recurrenceKey": "aoba-services"
+    }
+  },
+  {
+    "id": "sakura-mail",
+    "sender": "billing@sakura.example",
+    "subject": "9月オフィス利用料",
+    "body": "9月28日期日のオフィス利用料10万円です。",
+    "attachment": {
+      "number": "SAKURA-202609-001",
+      "issuer": "サクラオフィス",
+      "recipientId": "sakura",
+      "amountJpy": "100000",
+      "dueAt": "2026-09-28T03:00:00.000Z",
+      "recurrenceKey": "office"
+    }
+  }
+]

@@ -1,0 +1,97 @@
+import { test, expect } from "@playwright/test";
+import { approveApi } from "./helpers";
+test("Sepolia principal round trip with Anvil TD and on-chain receipts", async ({
+  page,
+  baseURL,
+}) => {
+  test.skip(
+    process.env.TESTNET_EXECUTION !== "approved",
+    "Public sends require explicit authorization",
+  );
+  test.setTimeout(900000);
+  const origin = new URL(baseURL!).origin;
+  await page.context().setExtraHTTPHeaders({ Origin: origin });
+  expect(
+    (
+      await page.request.post("/api/auth/demo-login", {
+        data: {},
+        headers: { Origin: origin },
+      })
+    ).ok(),
+  ).toBeTruthy();
+  const post = async (path: string, data: unknown) => {
+    const r = await page.request.post(path, { data, timeout: 720000 });
+    expect(r.ok(), await r.text()).toBeTruthy();
+    return r.json();
+  };
+  await post("/api/demo/reset", {});
+  await page.goto("/");
+  await expect(page.getByText(/Sepolia接続デモ/)).toBeVisible();
+  let messages = await post("/api/chat/messages", {
+    text: "サンプルメールの閲覧を許可して確認して",
+  });
+  await approveApi(page.request, messages.at(-1).data.input, origin);
+  messages = await post("/api/chat/messages", {
+    text: "サンプルメールの閲覧を許可して確認して",
+  });
+  const proposal = (
+    messages as { kind: string; data?: { proposal: { id: string } } }[]
+  ).findLast((m) => m.kind === "proposal")!.data!.proposal;
+  await post("/api/chat/messages", {
+    text: "そうしてください",
+    proposalId: proposal.id,
+  });
+  await approveApi(
+    page.request,
+    { purpose: "proposal", proposalId: proposal.id },
+    origin,
+  );
+  await post("/api/demo/events", {
+    type: "due_date_reached",
+    requestId: crypto.randomUUID(),
+  });
+  messages = await post("/api/chat/messages", { text: "余力を運用したい" });
+  const investment = (
+    messages as { kind: string; data?: { proposal: { id: string } } }[]
+  ).findLast((m) => m.kind === "proposal")!.data!.proposal;
+  await post("/api/chat/messages", {
+    text: "そうしてください",
+    proposalId: investment.id,
+  });
+  await approveApi(
+    page.request,
+    { purpose: "proposal", proposalId: investment.id },
+    origin,
+  );
+  const before = await (await page.request.get("/api/dashboard")).json();
+  const amount = before.profile === "ten-usdc" ? "1600" : "400000";
+  const run = await post("/api/demo/events", {
+    type: "surplus_check",
+    requestId: crypto.randomUUID(),
+  });
+  expect(
+    run.steps.filter((s: { mode: string }) => s.mode === "sepolia"),
+  ).toHaveLength(3);
+  const invested = await (await page.request.get("/api/dashboard")).json();
+  expect(invested.locked).toBe(amount);
+  expect(invested.principalUsdc).toBe((BigInt(amount) * 6250n).toString());
+  await page.goto("/investment");
+  await expect(page.getByText(/Base Sepolia/)).toBeVisible();
+  await page.screenshot({
+    path: "/tmp/td-sepolia-live-investment.png",
+    fullPage: true,
+  });
+  await post("/api/chat/messages", { text: "運用分を全部TDに戻して" });
+  const after = await (await page.request.get("/api/dashboard")).json();
+  expect(after.td).toBe("800000");
+  expect(after.locked).toBe("0");
+  expect(after.principalUsdc).toBe("0");
+  expect(after.treasuryUsdc).toBe(before.treasuryUsdc);
+  await page.goto("/investment");
+  await expect(page.getByText(/Base Sepolia/)).toBeVisible();
+  await expect(page.getByText("¥800,000", { exact: true })).toBeVisible();
+  await page.screenshot({
+    path: "/tmp/td-sepolia-live-redeemed.png",
+    fullPage: true,
+  });
+});

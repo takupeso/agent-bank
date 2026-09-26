@@ -1,0 +1,37 @@
+# アーキテクチャ
+
+## コンポーネント
+
+- `src/app`：画面とHTTP入出力。本人のセッションとAgent credentialをAPI境界で区別する。
+- `src/features`：承認・委任・ルール・請求書・支払い・運用・償還の業務処理。
+- `src/integrations`：Anvil、Aave、World、Gemini、サンプルメールの接続。
+- `src/server`：SQLite、レコード管理、認証、HTTP境界、実行排他。
+- `contracts`：TD tokenとlock用vault。コントラクトの開発・テストはHardhat、アプリとの接続は非fork Anvilを使う。
+
+## 認証と承認
+
+本人はHttpOnly Cookie、Agentは専用credentialを使い、本人CookieでAgent APIを呼ぶことはできない。Agentに渡すcredentialと、対象・上限を含む業務上の委任は別に管理する。
+
+本人は表示された具体的な対象・条件を承認する。WorldモードではOrb proof、local-demoモードでは明示的なデモ承認を使う。承認は口座・対象・内容・版・認証世代へ束縛し、期限切れや再利用を拒否する。停止・委任取消は本人が行い、再有効化や権限拡大には新しい承認を要する。
+
+AIは依頼の分類と請求情報の抽出を補助する。モデルやメール本文は権限の付与元ではない。受取先、金額、実行可能な操作は銀行側が再検証する。
+
+## 資金と保存
+
+確定TD残高の正本はAnvil上のコントラクト。SQLiteは請求書、ルール、委任、Intent、実行記録を管理する。金額は整数の最小単位で扱う。
+
+運用ではTDをvaultにlockし、public側の銀行在庫から対応する疑似USDCを運用する。TDのlockによりpublic tokenをmintするものではない。償還ではUSDCの返却確認後に対応TDを解除し、lock中TDと運用資産を合計に二重計上しない。
+
+publicウォレットの鍵はサーバーで生成し、`CUSTODY_MASTER_KEY`で暗号化して保存する。環境・口座・chainとの対応を検証し、既存ウォレットを自動上書きしない。ローカルTD用の公開Anvil開発鍵はpublic側で使わない。
+
+## デモと外部接続
+
+`AI_MODE=stub`と`PUBLIC_ASSET_MODE=stub`で外部APIなしのデモを実行できる。外部接続はGemini・World・Base Sepoliaを個別に設定する。stub結果を外部での実行結果として表示しない。
+
+サンプル請求書はfixtureと金額・期日・請求番号・発行元・メールIDを照合してPDFを表示する。PDFの日時メタデータは生成時に除去する。
+
+この構成はローカルデモ向けであり、公開サーバー向けの運用設計、複数プロセスでの排他、障害時の自動復旧を提供するものではない。
+
+## 設計の詳細
+
+[ロードマップ](roadmap.md)、[API権限表](epics/api-authorization.md#api権限表)、[公開資料の調査](../llm-wiki/wiki/index.md)を参照してください。計画文書の初期方式と現行仕様の違いはロードマップに記載しています。
