@@ -91,3 +91,13 @@ node scripts/agent-redeem.mjs /path/to/agent-bank-connection.json --status
 実行APIは `POST /api/external-agent/redemptions`、bodyは `{"action":"redeem-approved"}`、状態確認は同じパスのGETです。銀行側の既存償還処理がAaveからToken accountへの引出し、銀行へのtoken返却、元の預金口座へのTD解除を検証します。Agentは金額・送金先・別の償還依頼を指定できません。取消・失効の検査は実行段階ごとにも行います。通信が途切れた場合は状態を確認してください。失敗途中の処理を新しい許可で無条件に再実行しないでください。
 
 公開デモはAaveのstub＋ローカルAnvilです。Sepolia接続では既存adapterを使いますが、実Aaveでの外部Agent実行は未検証です。元本を戻す既存仕様を引き継ぎ、利息相当のAave保有分はSepolia側に残ります。
+
+### MCPサーバー
+
+Claude Code・Claude DesktopなどのMCPクライアントからは、同じ接続ファイルを使うstdioサーバーを登録します。ツールは`get_balance`・`redeem_approved_investments`・`get_redemption_status`の3つで、上記の外部Agent APIだけを呼びます。引数は受け付けず、権限の付与・拡大や金額・送金先の指定はできません。
+
+```sh
+claude mcp add agent-bank -- node /absolute/path/to/agent-bank/scripts/agent-bank-mcp.mjs /absolute/path/to/agent-bank-connection.json
+```
+
+Claude Desktopでは設定ファイルの`mcpServers`へ同じコマンドを`command`・`args`として追加します。接続ファイルはツール呼出しごとに読み込むため、再発行した接続ファイルで同じパスを上書きすれば再登録は不要です。credentialは会話やツール結果へ出力しません。
