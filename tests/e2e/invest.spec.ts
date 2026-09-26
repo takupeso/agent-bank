@@ -1,10 +1,10 @@
-import { runDemoEvent, sendChat } from "./helpers";
+import { runDemoEvent, sendChat, resetDemo } from "./helpers";
 import { test, expect, demoApprove } from "./helpers";
 test("invest surplus after explicit consent and preserve inventory", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
+  await resetDemo(page);
   await expect(
     page.locator("main").getByText("¥1,000,000", { exact: true }),
   ).toBeVisible();
@@ -41,6 +41,8 @@ test("invest surplus after explicit consent and preserve inventory", async ({
   expect(after.locked).toBe(data.locked);
   expect(after.treasuryUsdc).toBe(data.treasuryUsdc);
   await page.goto("/investment");
-  await expect(page.getByText("2,500 USDC", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Investment schedule" }),
+  ).toContainText("Invest ¥400,000 in Aave.");
   await page.screenshot({ path: "/tmp/td-bank-invest.png", fullPage: true });
 });

@@ -103,6 +103,8 @@ test("reset explains outstanding assets without starting redemption", async ({
           movements: [],
         },
       });
+    if (path === "/api/demo/clock")
+      return route.fulfill({ json: { date: null, ready: false, stages: [] } });
     if (path === "/api/demo/reset")
       return route.fulfill({
         status: 409,
@@ -115,10 +117,14 @@ test("reset explains outstanding assets without starting redemption", async ({
     return route.fulfill({ status: 404, json: {} });
   });
   await page.goto("/");
-  await page.getByRole("button", { name: "Reset demo", exact: true }).click();
-  await expect(page.locator("main").getByRole("alert")).toContainText(
+  await page
+    .getByRole("button", { name: "Open demo controls", exact: true })
+    .click();
+  const drawer = page.getByRole("dialog", { name: "Demo controls" });
+  await drawer.getByRole("button", { name: "Reset demo", exact: true }).click();
+  await expect(drawer.getByRole("alert")).toContainText(
     "Redeem all investments to TD",
   );
   expect(calls).toEqual(["/api/demo/reset"]);
-  await expect(page.locator("main").getByRole("alert")).toBeVisible();
+  await expect(drawer).toBeVisible();
 });

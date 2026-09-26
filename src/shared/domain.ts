@@ -66,6 +66,7 @@ export type AuthorizationBinding = {
   scopes: string[];
 };
 export type Rule = {
+  approvedDemoDate?: string;
   investmentAllocations?: InvestmentAllocation[];
   authorization?: AuthorizationBinding;
   worldApprovalId?: string;
@@ -93,7 +94,11 @@ export type Proposal = {
   baseVersion: number;
   conditions: Omit<
     Rule,
-    "version" | "consentId" | "worldApprovalId" | "authorization"
+    | "version"
+    | "consentId"
+    | "worldApprovalId"
+    | "authorization"
+    | "approvedDemoDate"
   >;
   sourceIds: string[];
   status: "proposed" | "accepted";

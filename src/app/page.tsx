@@ -87,8 +87,6 @@ function AccountCard({
 
 export default function Home() {
   const [data, setData] = useState<View>({ initialized: false });
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
   const [refreshError, setRefreshError] = useState("");
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
   const seen = useRef<Set<string> | null>(null);
@@ -120,29 +118,6 @@ export default function Home() {
       window.removeEventListener("agent-bank:invoices-updated", refresh);
     };
   }, [load]);
-  async function reset() {
-    setBusy(true);
-    setError("");
-    try {
-      const r = await apiFetch("/api/demo/reset", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-      });
-      if (!r.ok) {
-        const result = await r.json();
-        throw new Error(result.error ?? "Unable to initialize the demo");
-      }
-      await load();
-      window.dispatchEvent(new Event("agent-bank:demo-reset"));
-      window.dispatchEvent(new Event("agent-bank:invoices-updated"));
-      window.dispatchEvent(new Event("agent-bank:rules-updated"));
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
   const movements = data.movements ?? [];
   useEffect(() => {
     const ids = data.movements?.map((m) => m.id) ?? [];
@@ -163,13 +138,7 @@ export default function Home() {
   return (
     <>
       <header className="page-header">
-        <div>
-          <h1>Accounts</h1>
-          <p>
-            View balances and transactions across your deposit and investment
-            accounts.
-          </p>
-        </div>
+        <h1>Accounts</h1>
         <div className="toolbar">
           {(data.mode === "sepolia" || data.profile === "ten-usdc") && (
             <span className="badge">
@@ -177,26 +146,14 @@ export default function Home() {
               {data.profile === "ten-usdc" ? " · 10 USDC starter" : ""}
             </span>
           )}
-          <button
-            className="secondary"
-            onClick={() => void reset()}
-            disabled={busy}
-          >
-            {busy
-              ? "Initializing…"
-              : data.initialized
-                ? "Reset demo"
-                : "Initialize demo"}
-          </button>
         </div>
       </header>
-      {error && <p role="alert">{error}</p>}
       {refreshError && <p role="status">{refreshError}</p>}
 
       {!data.initialized && (
         <p className="empty-hint">
-          Initialize the demo to fund Account A, then follow the next step in
-          the agent panel.
+          Open demo controls (bottom right) and choose Initialize demo to fund
+          Account A.
         </p>
       )}
 

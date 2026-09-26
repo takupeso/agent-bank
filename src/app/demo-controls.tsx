@@ -20,10 +20,39 @@ export function DemoControls({
   const [clock, setClock] = useState<Clock>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [initialized, setInitialized] = useState<boolean>();
   async function load() {
-    const response = await apiFetch("/api/demo/clock");
-    if (!response.ok) throw new Error("Unable to load demo controls.");
+    const [response, dashboard] = await Promise.all([
+      apiFetch("/api/demo/clock"),
+      apiFetch("/api/dashboard"),
+    ]);
+    if (!response.ok || !dashboard.ok)
+      throw new Error("Unable to load demo controls.");
     setClock(await response.json());
+    setInitialized((await dashboard.json()).initialized);
+  }
+  async function reset() {
+    setBusy(true);
+    setError("");
+    try {
+      const r = await apiFetch("/api/demo/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      if (!r.ok) {
+        const result = await r.json();
+        throw new Error(result.error ?? "Unable to initialize the demo");
+      }
+      dialog.current?.close();
+      window.dispatchEvent(new Event("agent-bank:demo-reset"));
+      window.dispatchEvent(new Event("agent-bank:invoices-updated"));
+      window.dispatchEvent(new Event("agent-bank:rules-updated"));
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
   }
   useEffect(() => {
     const refresh = () => {
@@ -107,6 +136,17 @@ export function DemoControls({
         </header>
         <div className="demo-drawer-body">
           <div className="demo-actions">
+            <button
+              className="secondary"
+              disabled={busy || chatBusy}
+              onClick={() => void reset()}
+            >
+              {busy
+                ? "Working…"
+                : initialized === false
+                  ? "Initialize demo"
+                  : "Reset demo"}
+            </button>
             <button
               disabled={busy || chatBusy}
               onClick={() => {

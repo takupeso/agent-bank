@@ -1,11 +1,11 @@
-import { runDemoEvent, sendChat } from "./helpers";
+import { runDemoEvent, sendChat, resetDemo } from "./helpers";
 import { test, expect, demoApprove } from "./helpers";
 test("replay complete demo twice and inspect all five screens", async ({
   page,
 }) => {
   for (let cycle = 0; cycle < 2; cycle++) {
     await page.goto("/");
-    await page.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
+    await resetDemo(page);
     await expect(
       page.locator("main").getByText("¥1,000,000", { exact: true }),
     ).toBeVisible();
@@ -32,7 +32,9 @@ test("replay complete demo twice and inspect all five screens", async ({
     });
     await page.goto("/chat");
     await page.goto("/investment");
-    await expect(page.getByText("2,500 USDC", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Investment schedule" }),
+    ).toContainText("Invest ¥400,000 in Aave.");
     await page.screenshot({
       path: `/tmp/td-demo-investment-${cycle}.png`,
       fullPage: true,

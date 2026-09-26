@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 const items = [
   [
     "/",
-    "Home",
+    "Accounts",
     "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
   ],
   ["/invoices", "Payments", "M4 5h16v14H4zM4 9h16M8 14h4"],

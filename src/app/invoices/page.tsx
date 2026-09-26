@@ -67,13 +67,9 @@ export default function Invoices() {
               >
                 View invoice
               </button>
-            ) : (
-              <p>
-                {i.source === "card"
-                  ? "Demo card payment information"
-                  : "A PDF is not available for this invoice."}
-              </p>
-            )}
+            ) : i.source !== "card" ? (
+              <p>A PDF is not available for this invoice.</p>
+            ) : null}
           </div>
         </section>
       ))}

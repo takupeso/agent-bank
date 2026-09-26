@@ -19,7 +19,13 @@ export async function GET(req: Request) {
             status = "reapproval-required";
           }
         }
-        return { ...rule, status, investmentTarget };
+        return {
+          ...rule,
+          // Older demo rules predate approval-date recording and started at the fixture clock.
+          approvedDemoDate: rule.approvedDemoDate ?? "2026-09-27T00:00:00.000Z",
+          status,
+          investmentTarget,
+        };
       }),
     );
   } catch (e) {

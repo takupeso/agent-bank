@@ -1,140 +1,160 @@
 "use client";
 import { apiFetch } from "../api-client";
-import { formatUsdc } from "@/shared/format";
 import { useEffect, useState } from "react";
-import { DemoEvent } from "../chat/demo-event";
-type Flow = {
-  paymentPlan?: boolean;
-  td: string;
-  confirmedJpy: string;
-  predictedJpy: string;
-  bufferJpy: string;
-  reserveJpy: string;
-  investJpy: string;
-};
+import type { Invoice, Rule } from "@/shared/domain";
+
+const yen = (amount: string | bigint) =>
+  `¥${BigInt(amount).toLocaleString("en-US")}`;
+const dateKey = (value: string) =>
+  new Date(value).toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
+
 export default function Investment() {
-  const [mode, setMode] = useState("stub");
-  const [flow, setFlow] = useState<Flow | null>(null);
-  const [position, setPosition] = useState("0");
-  async function load() {
-    const [f, d] = await Promise.all([
-      apiFetch("/api/cashflow"),
-      apiFetch("/api/dashboard"),
-    ]);
-    if (f.ok) setFlow(await f.json());
-    if (d.ok) {
-      const data = await d.json();
-      setMode(data.mode);
-      setPosition(data.positionUsdc ?? "0");
-    }
-  }
+  const [plan, setPlan] = useState<{ rule?: Rule; invoices: Invoice[] }>();
+  const [error, setError] = useState("");
   useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const [rulesResponse, invoicesResponse] = await Promise.all([
+          apiFetch("/api/rules"),
+          apiFetch("/api/invoices"),
+        ]);
+        if (!rulesResponse.ok || !invoicesResponse.ok)
+          throw new Error("Unable to load the investment plan.");
+        const rules: Rule[] = await rulesResponse.json();
+        const { invoices }: { invoices: Invoice[] } =
+          await invoicesResponse.json();
+        if (active) {
+          setPlan({
+            rule: rules.find((rule) => rule.id === "investment"),
+            invoices,
+          });
+          setError("");
+        }
+      } catch {
+        if (active) setError("Unable to load the investment plan.");
+      }
+    };
     const refresh = () => void load();
     refresh();
     window.addEventListener("agent-bank:invoices-updated", refresh);
-    return () =>
+    window.addEventListener("agent-bank:rules-updated", refresh);
+    window.addEventListener("agent-bank:demo-reset", refresh);
+    return () => {
+      active = false;
       window.removeEventListener("agent-bank:invoices-updated", refresh);
+      window.removeEventListener("agent-bank:rules-updated", refresh);
+      window.removeEventListener("agent-bank:demo-reset", refresh);
+    };
   }, []);
+  const rule = plan?.rule;
+  const allocations = rule?.investmentAllocations;
+  const invoices =
+    plan?.invoices.filter(
+      (invoice) =>
+        !allocations || allocations.some((lot) => lot.paymentId === invoice.id),
+    ) ?? [];
+  const dates = [
+    ...new Set(invoices.map((invoice) => dateKey(invoice.dueAt))),
+  ].sort();
+  let remaining = BigInt(rule?.maxInvestmentJpy ?? "0");
   return (
     <>
-      <header className="page-header">
+      <header>
         <h1>Investment plan</h1>
-        <p>Keep funds for month-end needs and invest the available balance.</p>
       </header>
-      {flow && (
-        <>
-          <div className="investment-plan">
-            <section className="panel" aria-labelledby="deposit-balance-title">
-              <div className="plan-total">
-                <h2 id="deposit-balance-title">Deposit balance</h2>
-                <strong>¥{BigInt(flow.td).toLocaleString("en-US")}</strong>
-              </div>
-              {BigInt(flow.td) > 0n && (
-                <div className="plan-bar" aria-hidden="true">
-                  <span
-                    style={{
-                      width: `${BigInt(flow.reserveJpy) >= BigInt(flow.td) ? 100n : (BigInt(flow.reserveJpy) * 100n) / BigInt(flow.td)}%`,
-                    }}
-                  />
-                </div>
-              )}
-              <div className="plan-legend" aria-hidden="true">
-                <span className="reserve">Reserved</span>
-                <span className="available">Investable</span>
-              </div>
-            </section>
-            <section className="panel" aria-labelledby="reserved-funds-title">
-              <div className="plan-total">
-                <h2 id="reserved-funds-title">
-                  {flow.paymentPlan ? "Upcoming payments" : "Reserved funds"}
-                </h2>
-                <strong>
-                  ¥{BigInt(flow.reserveJpy).toLocaleString("en-US")}
-                </strong>
-              </div>
-              {flow.paymentPlan && (
-                <p>These funds stay invested until each payment is needed.</p>
-              )}
-              <section
-                className="plan-breakdown"
-                aria-labelledby="reserve-breakdown-title"
-              >
-                <h3 id="reserve-breakdown-title">
-                  Breakdown through month-end
-                </h3>
-                <dl>
-                  <div>
-                    <dt>Confirmed invoice payments</dt>
-                    <dd>
-                      ¥{BigInt(flow.confirmedJpy).toLocaleString("en-US")}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Forecast from history (Minato Cloud)</dt>
-                    <dd>
-                      ¥{BigInt(flow.predictedJpy).toLocaleString("en-US")}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Safety buffer</dt>
-                    <dd>¥{BigInt(flow.bufferJpy).toLocaleString("en-US")}</dd>
-                  </div>
-                </dl>
-              </section>
-            </section>
-            <section
-              className="panel"
-              aria-labelledby="investment-assets-title"
-            >
-              <h2 id="investment-assets-title">Investment assets</h2>
-              <div className="plan-investments">
-                <section aria-labelledby="invested-title">
-                  <h3 id="invested-title">Invested</h3>
-                  <strong>{formatUsdc(position)} USDC</strong>
-                  {mode === "stub" && (
-                    <p className="plan-caption">Simulation</p>
-                  )}
-                </section>
-                <section aria-labelledby="investable-title">
-                  <h3 id="investable-title">Available to invest</h3>
-                  <strong>
-                    ¥{BigInt(flow.investJpy).toLocaleString("en-US")}
-                  </strong>
-                </section>
-              </div>
-            </section>
-          </div>
-          <div className="quick-actions">
-            <DemoEvent
-              type="surplus_check"
-              label="Demo: Check available funds"
-              onComplete={() => void load()}
-            />
-          </div>
-        </>
+      {error && <p role="alert">{error}</p>}
+      {!plan && !error && <p role="status">Loading…</p>}
+      {plan && !rule && (
+        <section className="panel">
+          Approve a payment and investment plan in chat to see the schedule.
+        </section>
       )}
-      {!flow && (
-        <section className="panel">Initialize the demo on Home first.</section>
+      {rule && (
+        <section
+          className="panel investment-schedule"
+          aria-label="Investment schedule"
+        >
+          {!rule.enabled && <p>Automatic investing is paused.</p>}
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">
+                  {rule.approvedDemoDate && (
+                    <time dateTime={dateKey(rule.approvedDemoDate)}>
+                      {new Date(rule.approvedDemoDate).toLocaleDateString(
+                        "en-US",
+                        {
+                          timeZone: "Asia/Tokyo",
+                          month: "short",
+                          day: "numeric",
+                        },
+                      )}
+                    </time>
+                  )}
+                </th>
+                <td>
+                  Invest <strong>{yen(rule.maxInvestmentJpy)}</strong> in Aave.
+                </td>
+              </tr>
+              {dates.map((date) => {
+                const payments = invoices.filter(
+                  (invoice) => dateKey(invoice.dueAt) === date,
+                );
+                const amount = payments.reduce(
+                  (sum, invoice) => sum + BigInt(invoice.amountJpy),
+                  0n,
+                );
+                remaining -= amount;
+                return (
+                  <tr key={date}>
+                    <th scope="row">
+                      <time dateTime={date}>
+                        {new Date(date + "T12:00:00+09:00").toLocaleDateString(
+                          "en-US",
+                          {
+                            timeZone: "Asia/Tokyo",
+                            month: "short",
+                            day: "numeric",
+                          },
+                        )}
+                      </time>
+                    </th>
+                    <td>
+                      {allocations && (
+                        <p>
+                          Return <strong>{yen(amount)}</strong> from Aave to
+                          your deposit account.
+                        </p>
+                      )}
+                      {payments.map((invoice) => (
+                        <p key={invoice.id}>
+                          {invoice.status === "paid" ? "Paid" : "Pay"}{" "}
+                          <strong>{yen(invoice.amountJpy)}</strong> to{" "}
+                          {invoice.source === "card"
+                            ? invoice.cardName
+                            : invoice.issuer}
+                          .
+                        </p>
+                      ))}
+                      {allocations && (
+                        <p className="schedule-remaining">
+                          Keep {yen(remaining)} invested in Aave.
+                        </p>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </section>
       )}
     </>
   );

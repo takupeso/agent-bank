@@ -1,4 +1,4 @@
-import { sendChat } from "./helpers";
+import { sendChat, resetDemo } from "./helpers";
 import { test, expect, demoApprove } from "./helpers";
 import { test as unauthenticated } from "@playwright/test";
 
@@ -47,7 +47,7 @@ test("World unavailable permits explicit scoped demo consent; OK alone changes n
       response.url().endsWith("/api/demo/reset") &&
       response.request().method() === "POST",
   );
-  await page.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
+  await resetDemo(page);
   expect((await reset).ok()).toBeTruthy();
   await page.reload();
   await expect(
@@ -165,7 +165,7 @@ test("World begin failure still offers explicit demo approval", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
+  await resetDemo(page);
   await expect(
     page.locator("main").getByText("¥1,000,000", { exact: true }),
   ).toBeVisible();
