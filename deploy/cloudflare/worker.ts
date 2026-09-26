@@ -50,9 +50,12 @@ const cookieName = "demo_sandbox";
 export default {
   async fetch(request: Request, env: Env) {
     const url = new URL(request.url);
-    const external = url.pathname === "/api/external-agent/balance";
+    const external = [
+      "/api/external-agent/balance",
+      "/api/external-agent/redemptions",
+    ].includes(url.pathname);
     const routedId =
-      external && request.method === "GET"
+      external && ["GET", "POST"].includes(request.method)
         ? /^Bearer abg\.([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\.[a-f0-9]{64}$/.exec(
             request.headers.get("authorization") ?? "",
           )?.[1]

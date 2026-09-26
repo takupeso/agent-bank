@@ -65,10 +65,15 @@ export function createRedemptionRequest(
     status: "pending",
   });
 }
-export async function redeem(principal: Principal, messageId: string) {
+export async function redeem(
+  principal: Principal,
+  messageId: string,
+  externalGuard?: () => void,
+) {
   requirePrincipal(principal, "agent");
   const request = get<RedemptionRequest>("redemption_requests", messageId);
   const guard = () => {
+    externalGuard?.();
     requirePrincipal(principal, "agent");
     if (
       !request ||

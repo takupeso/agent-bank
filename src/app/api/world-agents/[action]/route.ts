@@ -143,13 +143,23 @@ export async function POST(req: Request) {
         return Response.json({ connected: true }, { headers });
       }
       if (action(req) === "grant") {
-        const input = z.object({ name: z.string() }).strict().parse(body);
+        const input = z
+          .object({
+            name: z.string(),
+            redemptionHash: z
+              .string()
+              .regex(/^[a-f0-9]{64}$/)
+              .optional(),
+          })
+          .strict()
+          .parse(body);
         return Response.json(
           grantBalance(
             p,
             browser(req) ?? "",
             input.name,
             cookieValue(req, "demo_sandbox"),
+            input.redemptionHash,
           ),
           { headers },
         );

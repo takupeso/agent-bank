@@ -76,3 +76,18 @@ Code + S256 PKCE、state、nonce、RS256署名、issuer、audience、期限、ac
 許可なしの照会は401です。取消・期限切れ・口座リセットでも接続は無効になります。新たな接続発行には新しいWorld認証が必要です。支払い・送金・メール閲覧には使えません。名前は利用者が付けるラベルで、エージェント自身の認証証明ではありません。
 
 Cloudflareではcredential内のルーティングIDで同じサンドボックスへ到達し、バックエンドがcredential全体のハッシュと委任を検証します。Cookieの受け渡しは不要です。ローカルでも同じAPIを利用できますが、Worldのcallbackとブラウザの接続先は一致させてください。
+
+## 外部エージェントによる預金への戻し入れ
+
+運用中の口座では、委任画面の `Also allow Aave → Token account → Deposit account` を選べます。画面に出た元本総額・運用件数を確認して許可すると、対象の運用分を元のAccount Aへ戻す1件の償還依頼を銀行が保存します。金額・対象が承認表示から変わっていれば再確認が必要です。許可は最大5分間で、残高照会専用の接続情報には償還権限を追加しません。
+
+外部Agentはダウンロードした接続情報を使って実行します。
+
+```sh
+node scripts/agent-redeem.mjs /path/to/agent-bank-connection.json
+node scripts/agent-redeem.mjs /path/to/agent-bank-connection.json --status
+```
+
+実行APIは `POST /api/external-agent/redemptions`、bodyは `{"action":"redeem-approved"}`、状態確認は同じパスのGETです。銀行側の既存償還処理がAaveからToken accountへの引出し、銀行へのtoken返却、元の預金口座へのTD解除を検証します。Agentは金額・送金先・別の償還依頼を指定できません。取消・失効の検査は実行段階ごとにも行います。通信が途切れた場合は状態を確認してください。失敗途中の処理を新しい許可で無条件に再実行しないでください。
+
+公開デモはAaveのstub＋ローカルAnvilです。Sepolia接続では既存adapterを使いますが、実Aaveでの外部Agent実行は未検証です。元本を戻す既存仕様を引き継ぎ、利息相当のAave保有分はSepolia側に残ります。

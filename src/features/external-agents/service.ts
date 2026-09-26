@@ -4,6 +4,7 @@ import { z } from "zod";
 import { sqlite, current } from "../../server/db";
 import {
   authState,
+  internalAgentPrincipal,
   hashSecret,
   secret,
   requirePrincipal,
@@ -13,6 +14,11 @@ import {
 import { verifiedWorldCheck } from "../world-agents/service";
 import { worldAgentsConfig } from "../../integrations/world-agents";
 import { balance } from "../../integrations/td-ledger";
+
+import { all, get } from "../../server/records";
+import { createRedemptionRequest, redeem } from "../investment/redemption";
+import type { Investment } from "../investment/service";
+import type { Run } from "../../shared/domain";
 
 const ttl = 15 * 60_000;
 export const externalTokenPattern =
@@ -31,7 +37,8 @@ type Grant = Link & {
   instanceId: string;
   expiresAt: number;
   revoked: boolean;
-  scope: "balance:read";
+  scope: "balance:read" | "balance:read redemption:execute";
+  redemptionRequestId?: string;
 };
 const configHash = () => hashSecret(JSON.stringify(worldAgentsConfig()));
 function tables() {
@@ -85,6 +92,18 @@ export function connectAccount(p: Principal, browser: string) {
     )
     .run(p.accountId, JSON.stringify(link));
 }
+function redemptionQuote() {
+  if (!current()) return null;
+  const orders = all<Investment>("investment_orders")
+    .filter((o) => o.status === "invested")
+    .sort((a, b) => a.id.localeCompare(b.id));
+  if (!orders.length) return null;
+  return {
+    hash: hashSecret(JSON.stringify(orders)),
+    totalJpy: orders.reduce((s, o) => s + BigInt(o.amountJpy), 0n).toString(),
+    count: orders.length,
+  };
+}
 export function connectionStatus(p: Principal, browser: string) {
   requirePrincipal(p, "human");
   let connected = false;
@@ -103,6 +122,7 @@ export function connectionStatus(p: Principal, browser: string) {
     connected,
     initialized: Boolean(state),
     accountLabel: "Account A",
+    redemptionQuote: redemptionQuote(),
     grants: rows
       .map((r) => JSON.parse(r.data) as Grant)
       .filter(
@@ -127,6 +147,7 @@ export function grantBalance(
   browser: string,
   name: string,
   routingId?: string,
+  redemptionHash?: string,
 ) {
   const agentName = z.string().trim().min(1).max(60).parse(name);
   return sqlite.transaction(() => {
@@ -137,6 +158,13 @@ export function grantBalance(
       .prepare("SELECT id FROM external_agent_grants WHERE proof=?")
       .get(hashSecret(proof.requestId));
     if (used) throw new AuthorizationError(409);
+    let redemption;
+    if (redemptionHash !== undefined) {
+      const quote = redemptionQuote();
+      if (!quote || quote.hash !== redemptionHash)
+        throw new AuthorizationError(409);
+      redemption = createRedemptionRequest(p);
+    }
     const sandbox = routingId ? z.uuid().parse(routingId) : randomUUID();
     const token = `abg.${sandbox}.${secret()}`;
     const grant: Grant = {
@@ -145,9 +173,10 @@ export function grantBalance(
       name: agentName,
       hash: hashSecret(token),
       instanceId: state.id,
-      expiresAt: Date.now() + ttl,
+      expiresAt: redemption ? redemption.expiresAt : Date.now() + ttl,
       revoked: false,
-      scope: "balance:read",
+      scope: redemption ? "balance:read redemption:execute" : "balance:read",
+      ...(redemption ? { redemptionRequestId: redemption.id } : {}),
     };
     sqlite
       .prepare("INSERT INTO external_agent_grants VALUES(?,?,?,?)")
@@ -193,7 +222,7 @@ function authenticate(token: string) {
   if (
     g.revoked ||
     g.expiresAt <= Date.now() ||
-    g.scope !== "balance:read" ||
+    !["balance:read", "balance:read redemption:execute"].includes(g.scope) ||
     g.generation !== state.generation ||
     g.mode !== state.mode ||
     !bank ||
@@ -222,4 +251,35 @@ export async function externalBalance(token: string) {
     scope: "balance:read",
     environment: "demo",
   };
+}
+
+export async function externalRedeem(token: string) {
+  const guard = () => {
+    const { grant } = authenticate(token);
+    if (
+      grant.scope !== "balance:read redemption:execute" ||
+      !grant.redemptionRequestId
+    )
+      throw new AuthorizationError(403);
+    return grant;
+  };
+  const grant = guard();
+  const run = await redeem(
+    internalAgentPrincipal(),
+    grant.redemptionRequestId!,
+    guard,
+  );
+  return { runId: run.id, status: run.status, steps: run.steps };
+}
+export function externalRedemptionStatus(token: string) {
+  const { grant } = authenticate(token);
+  if (
+    grant.scope !== "balance:read redemption:execute" ||
+    !grant.redemptionRequestId
+  )
+    throw new AuthorizationError(403);
+  const run = get<Run>("runs", grant.redemptionRequestId);
+  return run
+    ? { runId: run.id, status: run.status, steps: run.steps }
+    : { status: "ready", steps: [] };
 }
