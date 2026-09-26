@@ -14,3 +14,5 @@ playwright-report
 llm-wiki/raw
 docs/audits
 .wrangler
+
+agent-bank-connection*.json

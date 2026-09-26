@@ -9,7 +9,8 @@ import { AgentPanel } from "./chat/agent-panel";
 
 export function BankShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  if (pathname === "/world-agents") return <>{children}</>;
+  if (pathname === "/world-agents" || pathname === "/world-agents/connect")
+    return <>{children}</>;
   return (
     <AuthGate>
       <div className="app-shell">

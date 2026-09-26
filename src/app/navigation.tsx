@@ -3,6 +3,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 const items = [
   [
+    "/world-agents",
+    "Agent connections",
+    "M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2",
+  ],
+  [
     "/",
     "Accounts",
     "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",

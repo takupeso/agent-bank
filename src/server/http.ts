@@ -10,6 +10,13 @@ export const apiPolicy: ReadonlyArray<{
   path: RegExp;
   role: "public" | "human" | "agent";
 }> = [
+  { method: "GET", path: /^\/api\/world-agents\/connection$/, role: "human" },
+  {
+    method: "POST",
+    path: /^\/api\/world-agents\/(connect|grant|revoke)$/,
+    role: "human",
+  },
+  { method: "GET", path: /^\/api\/external-agent\/balance$/, role: "agent" },
   {
     method: "GET",
     path: /^\/api\/world-agents\/(status|callback)$/,
