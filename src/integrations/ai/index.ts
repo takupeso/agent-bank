@@ -41,8 +41,18 @@ async function generateJson(prompt: string, schema: Record<string, unknown>) {
       cache: "no-store",
     },
   );
-  if (!response.ok)
-    throw new Error(`Gemini request failed (${response.status})`);
+  if (!response.ok) {
+    // Only Google's enum codes (e.g. API_KEY_INVALID); never free-form text.
+    const error = await response
+      .json()
+      .then((b) => b?.error, () => undefined);
+    const codes = [error?.status, error?.details?.[0]?.reason].filter(
+      (c): c is string => typeof c === "string" && /^[A-Z_]{1,64}$/.test(c),
+    );
+    throw new Error(
+      `Gemini request failed (${[response.status, ...codes].join(" ")})`,
+    );
+  }
   const body = z
     .object({
       candidates: z
