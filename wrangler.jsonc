@@ -9,7 +9,8 @@
       "class_name": "BankSandbox",
       "image": "./Dockerfile",
       "instance_type": "standard-1",
-      "max_instances": 30
+      "max_instances": 30,
+      "rollout_step_percentage": [100]
     }
   ],
   "durable_objects": {
