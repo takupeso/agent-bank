@@ -747,3 +747,46 @@ test("explicit demo cancellation invalidates the pending approval and checks its
   await assert.rejects(world.cancelDemoApproval(fresh.id, human));
   assert.equal(get<Rule>("rules", "payment")?.version, 1);
 });
+
+test("sandbox local-demo binds World to the first approving human only when enabled", async () => {
+  verifier();
+  demo();
+  const other = (c: C) => ({
+    ...proof(c),
+    session_id: "session_" + "2".repeat(128),
+  });
+  assert.equal(world.worldStatus().enrollOnApproval, false);
+  assert.throws(() => proposal(), auth.AuthorizationError);
+  process.env.WORLD_ENROLL_ON_APPROVAL = "true";
+  try {
+    assert.equal(world.worldStatus().enrollOnApproval, true);
+    const first = proposal();
+    const racing = proposal();
+    const rule = (
+      await world.completeChallenge(first.id, owner, proof(first), human)
+    ).rule!;
+    world.assertRuleApproval(rule);
+    assert.equal(rule.authorization?.approvalMethod, "world");
+    assert.deepEqual(
+      { ...world.worldStatus(), mode: undefined },
+      {
+        required: false,
+        enrolled: true,
+        enrollOnApproval: false,
+        configured: true,
+        mode: undefined,
+      },
+    );
+    // An approval started before binding cannot bind a second human.
+    await assert.rejects(
+      world.completeChallenge(racing.id, owner, other(racing), human),
+    );
+    // Once bound, only the same human can approve.
+    const next = proposal();
+    await assert.rejects(
+      world.completeChallenge(next.id, owner, other(next), human),
+    );
+  } finally {
+    delete process.env.WORLD_ENROLL_ON_APPROVAL;
+  }
+});

@@ -7,6 +7,7 @@ import { apiFetch, apiPost } from "./api-client";
 export type WorldStatus = {
   required: boolean;
   enrolled: boolean;
+  enrollOnApproval: boolean;
   configured: boolean;
   mode: string;
   authMode: "world" | "local-demo";
@@ -81,7 +82,10 @@ export function WorldApproval({
         const status: WorldStatus = await response.json();
         if (!active) return;
         setWorld(status);
-        if (!status.configured || !status.enrolled) {
+        if (
+          !status.configured ||
+          (!status.enrolled && !status.enrollOnApproval)
+        ) {
           setError("Worldが未設定または未登録です。");
           return;
         }

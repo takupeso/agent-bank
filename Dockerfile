@@ -21,6 +21,8 @@ RUN pnpm install --frozen-lockfile
 FROM node:24-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+# Sandboxes log in with local-demo; the first World approval binds the account.
+ENV WORLD_ENROLL_ON_APPROVAL=true
 COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/anvil
 COPY . .
 COPY --from=deps /app/node_modules ./node_modules

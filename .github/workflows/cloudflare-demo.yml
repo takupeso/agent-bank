@@ -30,8 +30,8 @@ jobs:
 
       - name: Start wrangler dev
         run: |
-          # WORLD_MODE checks that Worker vars reach the container.
-          pnpm exec wrangler dev --port 8787 --var WORLD_MODE:live > wrangler.log 2>&1 &
+          # WORLD_MODE checks that Worker vars reach the container; no Gemini key in CI.
+          pnpm exec wrangler dev --port 8787 --var WORLD_MODE:live --var AI_MODE:stub > wrangler.log 2>&1 &
           for i in $(seq 1 180); do
             grep -q "Ready on" wrangler.log && exit 0
             sleep 5
@@ -71,6 +71,7 @@ jobs:
           echo "--- Worker vars reach the container"
           curl -sS -b jar $base/api/world | tee world
           grep -q '"mode":"live"' world
+          grep -q '"enrollOnApproval":true' world
 
           echo "--- a second visitor gets an isolated sandbox"
           curl -sS -c jar2 -o /dev/null $base/
