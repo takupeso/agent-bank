@@ -747,3 +747,29 @@ test("explicit demo cancellation invalidates the pending approval and checks its
   await assert.rejects(world.cancelDemoApproval(fresh.id, human));
   assert.equal(get<Rule>("rules", "payment")?.version, 1);
 });
+
+test("sandbox enrolls on the first World login without a ticket only when enabled", async () => {
+  verifier();
+  assert.throws(() => login.beginLogin("enroll", owner), auth.AuthorizationError);
+  process.env.WORLD_ENROLL_WITHOUT_TICKET = "true";
+  try {
+    const stale = login.beginLogin("enroll", owner);
+    delete process.env.WORLD_ENROLL_WITHOUT_TICKET;
+    await assert.rejects(
+      login.completeLogin("enroll", stale.id, owner, proof(stale)),
+    );
+    process.env.WORLD_ENROLL_WITHOUT_TICKET = "true";
+    const c = login.beginLogin("enroll", owner);
+    const s = await login.completeLogin("enroll", c.id, owner, proof(c));
+    assert.ok(s.token);
+    assert.equal(world.worldStatus().enrolled, true);
+    assert.throws(
+      () => login.beginLogin("enroll", owner),
+      auth.AuthorizationError,
+    );
+    const again = login.beginLogin("login", owner);
+    assert.ok(await login.completeLogin("login", again.id, owner, proof(again)));
+  } finally {
+    delete process.env.WORLD_ENROLL_WITHOUT_TICKET;
+  }
+});

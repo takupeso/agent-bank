@@ -71,6 +71,23 @@ pnpm sepolia fund 0.002 --send
 
 アプリの実送信は`PUBLIC_TRANSACTIONS_ENABLED=true`を明示した場合のみ有効です。既定はfalseです。`ten-usdc`プロファイルは10 USDC、`standard`は2,500 USDCを上限に運用します。固定換算は1 USDC＝160円です。運用中はDB・Anvil state・鍵を一緒に保持し、全額償還後に実送信を無効にしてください。
 
+## 公開デモ（Cloudflare Containers）
+
+ETHGlobal等で誰でも触れるデモとして、Cloudflare Containersへデプロイできます。訪問者ごとに使い捨てのコンテナ（アプリ＋ローカルAnvil＋SQLite、資産はstub）を割り当て、他の訪問者と状態を共有しません。コンテナは10分操作がないと停止し、状態は破棄されます。
+
+```sh
+pnpm exec wrangler login
+pnpm cf:deploy
+```
+
+Docker（Rancher Desktop等）とWorkers Paidプランが必要です。`/new-sandbox`を開くと新しいサンドボックスに切り替わります。
+
+- コンテナ内でアプリはloopbackにバインドしたままです。`deploy/cloudflare/proxy.mjs`が同一オリジンのリクエストだけをloopbackとして中継します。架空資産のみを扱う隔離サンドボックスであることが前提です。
+- 設定は`wrangler.jsonc`の`vars`、キーはWorker secretで渡します。secretは`pnpm exec wrangler secret put GEMINI_API_KEY`（`WORLD_RP_SIGNING_KEY`も同様）で登録します。値の入力が必要なため、対話できるターミナルで実行してください（入力できない環境では空の値が登録されます）。`AI_MODE=gemini`か`WORLD_MODE=live`のときだけコンテナの外部通信を有効にします。
+- 既定は`BANK_AUTH_MODE=local-demo`（デモログイン）です。`world`にすると、サンドボックスでは初回登録チケットを使わず、最初にWorldでログインした人を口座に登録します（`WORLD_ENROLL_WITHOUT_TICKET`、イメージで有効）。ただしWorld ID 4.0ではOrbのrequest proofが同じactionにつき1人1回しか通らないため、現状の固定actionでは2回目以降のログイン・承認が「Already verified」で失敗します。
+- 公開デモでは誰でもGeminiを呼べるため、AI Studio側で利用上限を設定してください。資産はstub固定で、Base Sepoliaは使いません。
+- 同時に起動するサンドボックスは最大10台です（`max_instances`）。`standard-1`で全台が起動し続けた場合、Workers Paidの込み分を超えると約$0.36/時です。
+
 ## 認証・AI
 
 - [World・本人認証・Agent credential](docs/world-setup.md)

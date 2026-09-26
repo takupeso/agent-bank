@@ -86,7 +86,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         const attempt = ++generation.current;
         completed.current = false;
         const purpose = world?.enrolled ? "login" : "enroll";
-        if (purpose === "enroll" && !/^[a-f0-9]{64}$/.test(ticket.trim())) {
+        const needsTicket =
+          purpose === "enroll" && world?.enrollTicketRequired !== false;
+        if (needsTicket && !/^[a-f0-9]{64}$/.test(ticket.trim())) {
           setError(
             "初回登録チケットの形式が違います。64文字の英数字（0-9・a-f）だけを貼り付けてください（末尾の%などは含めません）。",
           );
@@ -94,7 +96,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         }
         const result = await apiPost(
           `/api/auth/${purpose}/begin`,
-          purpose === "enroll" ? { ticket: ticket.trim() } : {},
+          needsTicket ? { ticket: ticket.trim() } : {},
         );
         setTicket("");
         if (attempt !== generation.current) return;
@@ -137,7 +139,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             {!world.configured && (
               <p>Worldが未設定です。通常モードではWorldの設定が必要です。</p>
             )}
-            {!world.enrolled && (
+            {!world.enrolled && world.enrollTicketRequired && (
               <label className="field">
                 初回登録チケット
                 <input
@@ -150,7 +152,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             )}
             <button
               disabled={
-                busy || !world.configured || (!world.enrolled && !ticket.trim())
+                busy ||
+                !world.configured ||
+                (!world.enrolled && world.enrollTicketRequired && !ticket.trim())
               }
               onClick={() => void login(false)}
             >

@@ -1,0 +1,16 @@
+.git
+.env
+.env.*
+!.env.example
+.data
+.next
+node_modules
+artifacts
+cache
+test-results
+playwright-report
+*.tsbuildinfo
+*.sqlite*
+llm-wiki/raw
+docs/audits
+.wrangler

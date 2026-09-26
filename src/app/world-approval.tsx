@@ -7,6 +7,7 @@ import { apiFetch, apiPost } from "./api-client";
 export type WorldStatus = {
   required: boolean;
   enrolled: boolean;
+  enrollTicketRequired: boolean;
   configured: boolean;
   mode: string;
   authMode: "world" | "local-demo";
