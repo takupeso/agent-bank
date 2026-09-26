@@ -369,7 +369,7 @@ export function WorldApproval({
         {demo && (
           <>
             <p>
-              デモ承認：World本人確認を省略します。確認期限：
+              デモ承認：Worldでの人間であることの確認を省略します。確認期限：
               {new Date(demo.expiresAt * 1000).toLocaleTimeString("ja-JP")}
             </p>
             <button

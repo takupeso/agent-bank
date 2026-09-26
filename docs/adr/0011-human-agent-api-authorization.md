@@ -26,14 +26,14 @@ status: accepted
 - 自動的にWorld成功へ書き換えない。デモ継続時は進行中のWorld challengeを終了させ、同じ保存済み条件・現行版へ別の短命デモchallengeを発行して明示操作で消費する。Worldとデモの完了が競合しても一度しか適用しない。失敗したproofは成功記録として保存しない。
 - デモでもAPIのhuman/agent区別、利用者の明示操作、条件/口座/対象Agent/版/期限/一回消費、残高/上限/重複検証を維持する。ログインやデモ承認をAgentのツールへ公開せず、Agent credentialによる呼出しは拒否する。ただし人間の在席を証明しないため、ブラウザを操作できるAgentからの本人なりすまし耐性は保証しない。
 - セッション/credential/承認/grantにauthModeと認証世代、承認には `approvalMethod=world|local-demo` を保存する。World APIの完了記録とは区別する。切替時は以前のセッション/credentialを失効させる。worldへ戻す際、デモ承認のルール/grantを自動昇格せずWorld再承認待ちにする。World→デモ→Worldと往復しても失効した認証を復活させない。
-- 画面に「ローカルデモ：World本人確認を省略可能」、履歴に実際の承認方法を表示する。worldモードではデモAPI/ボタンを無効にし、認証失敗を拒否する。環境変数、デモAPIと条件分岐はこの例外に集約し、後で削除できるようにする。
+- 画面に「ローカルデモ：Worldでの人間であることの確認を省略可能」、履歴に実際の承認方法を表示する。worldモードではデモAPI/ボタンを無効にし、認証失敗を拒否する。環境変数、デモAPIと条件分岐はこの例外に集約し、後で削除できるようにする。
 - public実送信の既存スイッチ・銀行側Policy・実行許可は別条件として維持する。デモモードを選んでもpublic送信を有効化しない。本計画の変更で実送信は行わない。
 
 ### 構成と認証
 
 Next.js/Node/SQLiteの既存構成を維持し、共通認証・認可サービスで `human` と `agent` のPrincipalを生成する。Principalは認証済みサーバー処理だけが作る。HTTP body、role header、モデル出力のaccountId/agentIdから主体を決めない。サービスにもPrincipalと認可対象を渡し、ルート以外の入口も同じ判定を通す。
 
-- 利用者: 銀行口座へ既に紐づくWorld bindingに対する新しい本人確認proofをサーバーで検証して、銀行アプリの不透明なセッションを発行する。ログイン用challengeは用途を分け、ポリシー承認には流用不可。絶対有効期限30分、ログアウトで失効。ログインはルール変更を承認したことにはならない。
+- 利用者: 銀行口座へ既に紐づくWorld bindingに対する新しいproof of humanをサーバーで検証して、銀行アプリの不透明なセッションを発行する。ログイン用challengeは用途を分け、ポリシー承認には流用不可。絶対有効期限30分、ログアウトで失効。ログインはルール変更を承認したことにはならない。
 - セッション秘密値はHttpOnly/SameSite=Strict/Path=/のCookieにだけ置く。HTTPSではSecureとhost-only属性を使う。HTTP例外は既存のloopback開発環境だけ。localStorage、URL、会話、モデル入力、ログへ入れない。DBは秘密値のhash、accountId、World binding、発行/期限/失効日時を保持する。検証成功時にセッションIDを再生成する。
 - Agent: 今回は固定の内部Agent 1体。サーバー限定の専用credentialを生成し、DBにhash・agentId・accountId・期限・失効を保持する。平文は権限0600のGit対象外ファイルに保持し、信頼済みtool runnerだけがAuthorization headerに付与する。24時間で失効し、ローカル運用CLIで再発行/失効できる。CLIはOS管理者の操作であり、モデルにshell/ファイルアクセスを渡さない。credentialの更新は既存の委任範囲を拡大しない。
 - Agent credentialは本人の委任を代替しない。個々のメールアクセス/資金操作は、accountId・agentId・許可済みscope・有効なルールの共通部分で許可する。人間Cookieをtool runnerへ転送しない。CookieとBearerを同時に送った曖昧な要求は拒否する。
@@ -77,7 +77,7 @@ worldモードはWorld無効/未設定/失敗で本人承認を省略せず、�
 
 ## Consequences
 
-worldモードではネットワーク経由のAgent credentialで本人専用APIを実行できず、本人セッションだけでも権限拡大できない。local-demoは本人の在席確認を省略する一時的な例外で、銀行側PolicyとAgent credentialの権限制限を検証するために使う。HTTP送信者が生物学的な人間かを判別する保証ではなく、口座に紐づくWorld本人確認と対象操作への承認を銀行が要求する。
+worldモードではネットワーク経由のAgent credentialで本人専用APIを実行できず、本人セッションだけでも権限拡大できない。local-demoは本人の在席確認を省略する一時的な例外で、銀行側PolicyとAgent credentialの権限制限を検証するために使う。HTTP送信者が生物学的な人間かを判別する保証ではなく、口座に紐づくWorldでの人間であることの確認と対象操作への承認を銀行が要求する。
 
 同一Node/OS内の責務分離を維持するため、プロセス侵害・OS管理者・共有テスト鍵保有者から資産を隔離する保証はしない。Geminiへshell/銀行ファイル/任意コード実行を許可する将来設計には別の実行環境分離が必要。公開用テンプレートには資産鍵を含めない。Solidity/Aaveコントラクトの変更は本ADRの対象外。
 
