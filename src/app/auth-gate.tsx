@@ -132,7 +132,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     <main id="main" className="auth-screen">
       <section className="panel">
         <h1>Agent Bankにログイン</h1>
-        <p>口座に紐づくWorld本人確認でログインします。</p>
+        <p>口座に紐づくWorld IDで、人間であることを確認してログインします。</p>
         {!ready && <p>認証設定を確認中…</p>}
         {world && (
           <>

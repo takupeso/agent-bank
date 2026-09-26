@@ -1,4 +1,4 @@
-# World・本人認証・Agent credential
+# World（人間であることの確認）・Agent credential
 
 ## ローカルデモ
 

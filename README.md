@@ -42,7 +42,7 @@ http://127.0.0.1:3000 を開き、ローカルデモでの継続を選んでロ�
 4. デモ操作で支払期日を迎え、自動支払いを確認する。
 5. 承認後に始まる余力の運用と全額償還を試す。
 
-デモ承認はWorld認証の成功や本人確認を意味しません。デモログイン・承認でpublic送信スイッチが有効になることはありません。
+デモ承認はWorldでの人間であることの確認や、銀行の本人確認を意味しません。デモログイン・承認でpublic送信スイッチが有効になることはありません。
 
 再起動時は`.env.local`、SQLite、Anvil stateを保持してください。暗号化鍵を失うと保存済みウォレットを復元できません。データを初期化し直す場合も、運用中の元本を先に償還してください。
 
@@ -90,7 +90,7 @@ Docker（Rancher Desktop等）とWorkers Paidプランが必要です。`/new-sa
 
 ## 認証・AI
 
-- [World・本人認証・Agent credential](docs/world-setup.md)
+- [World（人間であることの確認）・Agent credential](docs/world-setup.md)
 - [Gemini接続](docs/ai-setup.md)
 - [アーキテクチャ](docs/architecture.md)
 
