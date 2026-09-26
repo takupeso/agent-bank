@@ -73,7 +73,7 @@ pnpm sepolia fund 0.002 --send
 
 ## 公開デモ（Cloudflare Containers）
 
-ETHGlobal等で誰でも触れるデモとして、Cloudflare Containersへデプロイできます。訪問者ごとに使い捨てのコンテナ（アプリ＋ローカルAnvil＋SQLite、stubモード）を割り当て、他の訪問者と状態を共有しません。コンテナは30分操作がないと停止し、状態は破棄されます。
+ETHGlobal等で誰でも触れるデモとして、Cloudflare Containersへデプロイできます。訪問者ごとに使い捨てのコンテナ（アプリ＋ローカルAnvil＋SQLite、資産はstub）を割り当て、他の訪問者と状態を共有しません。コンテナは10分操作がないと停止し、状態は破棄されます。
 
 ```sh
 pnpm exec wrangler login
@@ -82,9 +82,11 @@ pnpm cf:deploy
 
 Docker（Rancher Desktop等）とWorkers Paidプランが必要です。`/new-sandbox`を開くと新しいサンドボックスに切り替わります。
 
-- コンテナ内でアプリはloopbackにバインドしたままです。`deploy/cloudflare/proxy.mjs`が同一オリジンのリクエストだけをloopbackとして中継し、local-demoログインを公開します。架空資産のみを扱う隔離サンドボックスであることが前提です。
-- Gemini・Worldの設定は`wrangler.jsonc`の`vars`で切り替え、キーは`pnpm exec wrangler secret put GEMINI_API_KEY`（`WORLD_RP_SIGNING_KEY`も同様）で登録します。値の入力が必要なため、対話できるターミナルで実行してください（入力できない環境では空の値が登録されます）。`AI_MODE=gemini`か`WORLD_MODE=live`のときだけコンテナの外部通信を有効にします。公開デモでは誰でもGeminiを呼べるため、AI Studio側で利用上限を設定してください。認証は常にlocal-demo、資産はstubで、Base Sepoliaは使えません。`WORLD_MODE=live`では、デモログインのまま承認をWorldで行えます。サンドボックスでは最初にWorldで承認した人に口座を紐付け、以後のWorld承認はその人に限ります（`WORLD_ENROLL_ON_APPROVAL`、イメージで有効）。World IDがない人は「デモとして続ける」を選べます。
-- 同時に起動するサンドボックス数の上限は`wrangler.jsonc`の`max_instances`で調整します。
+- コンテナ内でアプリはloopbackにバインドしたままです。`deploy/cloudflare/proxy.mjs`が同一オリジンのリクエストだけをloopbackとして中継します。架空資産のみを扱う隔離サンドボックスであることが前提です。
+- 設定は`wrangler.jsonc`の`vars`、キーはWorker secretで渡します。secretは`pnpm exec wrangler secret put GEMINI_API_KEY`（`WORLD_RP_SIGNING_KEY`も同様）で登録します。値の入力が必要なため、対話できるターミナルで実行してください（入力できない環境では空の値が登録されます）。`AI_MODE=gemini`か`WORLD_MODE=live`のときだけコンテナの外部通信を有効にします。
+- 既定は`BANK_AUTH_MODE=world`です。サンドボックスでは初回登録チケットを使わず、最初にWorldでログインした人を口座に登録します（`WORLD_ENROLL_WITHOUT_TICKET`、イメージで有効）。Orb認証済みのWorld IDが必要です。
+- 公開デモでは誰でもGeminiを呼べるため、AI Studio側で利用上限を設定してください。資産はstub固定で、Base Sepoliaは使いません。
+- 同時に起動するサンドボックスは最大10台です（`max_instances`）。`standard-1`で全台が起動し続けた場合、Workers Paidの込み分を超えると約$0.36/時です。
 
 ## 認証・AI
 

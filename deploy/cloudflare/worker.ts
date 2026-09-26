@@ -1,9 +1,10 @@
 import { Container, getContainer } from "@cloudflare/containers";
 
 // Settings forwarded to each sandbox. Plain values live in wrangler.jsonc
-// `vars`; keys are set with `wrangler secret put`. BANK_AUTH_MODE and asset
-// settings are fixed by the image (local-demo, stub) and never forwarded.
+// `vars`; keys are set with `wrangler secret put`. Asset settings are fixed
+// by the image (stub) and never forwarded.
 const forwarded = [
+  "BANK_AUTH_MODE",
   "AI_MODE",
   "GEMINI_API_KEY",
   "GEMINI_MODEL",
@@ -21,7 +22,7 @@ type Env = Partial<Record<(typeof forwarded)[number], string>> & {
 // One disposable sandbox per visitor; state disappears when it sleeps.
 export class BankSandbox extends Container<Env> {
   defaultPort = 8080;
-  sleepAfter = "30m";
+  sleepAfter = "10m";
 
   override async fetch(request: Request) {
     const envVars = Object.fromEntries(

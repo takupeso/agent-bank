@@ -10,6 +10,7 @@ import {
   completeChallenge,
   worldStatus,
 } from "@/features/world/service";
+import { enrollmentTicketRequired } from "@/features/auth/service";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const cookieName = "world_browser";
@@ -28,6 +29,7 @@ export async function GET(req: Request) {
     return Response.json(
       {
         ...worldStatus(),
+        enrollTicketRequired: enrollmentTicketRequired(),
         authMode: authState().mode,
         configuredMode: process.env.PUBLIC_ASSET_MODE ?? "stub",
         persistedMode: current()?.publicMode ?? "stub",

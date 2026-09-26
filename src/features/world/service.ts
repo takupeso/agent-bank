@@ -105,16 +105,6 @@ function save(c: Challenge) {
 export function worldRequired() {
   return authState().mode === "world";
 }
-// Public demo sandboxes log in with local-demo, so nobody enrolls up front.
-// There the first World approval binds the account to that human, and later
-// World approvals must come from the same human.
-function enrollsOnApproval() {
-  return (
-    process.env.WORLD_ENROLL_ON_APPROVAL === "true" &&
-    authState().mode === "local-demo" &&
-    !binding()
-  );
-}
 export function worldStatus() {
   const enrolled = Boolean(binding());
   let configured = false;
@@ -124,13 +114,7 @@ export function worldStatus() {
   } catch {
     /* Status must work before Portal setup. */
   }
-  return {
-    required: worldRequired(),
-    enrolled,
-    enrollOnApproval: enrollsOnApproval(),
-    configured,
-    mode: worldMode(),
-  };
+  return { required: worldRequired(), enrolled, configured, mode: worldMode() };
 }
 export function requireWorldEnrollment() {
   if (!worldRequired()) return;
@@ -351,7 +335,7 @@ export function beginChallenge(
   requireWorldEnrollment();
   const context = createRpContext();
   const b = binding();
-  if (!b && !enrollsOnApproval()) throw new AuthorizationError(403);
+  if (!b) throw new AuthorizationError(403);
   const id = randomUUID();
   const signal = digest({
     domain: "agent-td-bank/world/v1",
@@ -374,7 +358,7 @@ export function beginChallenge(
     credentialId: principal!.credentialId,
     status: "pending",
     signal,
-    ...(p ? { policy: p, ...(b ? { sessionId: b.sessionId } : {}) } : {}),
+    ...(p ? { policy: p, sessionId: b!.sessionId } : {}),
   };
   save(c);
   const { owner: hidden, status, ...visible } = c;
@@ -455,29 +439,13 @@ export async function completeChallenge(
     return await serialized(() =>
       sqlite.transaction(() => {
         requirePrincipal(principal, "human");
-        let latest = read(id);
+        const latest = read(id);
         if (latest.status !== "verifying")
           throw new Error("World challenge cancelled");
         checkFresh(latest);
         sqlite
           .prepare("INSERT INTO world_used_proofs(id) VALUES(?)")
           .run(replayId(c, verified.nullifier));
-        if (latest.policy && !latest.sessionId) {
-          if (!enrollsOnApproval())
-            throw new Error("World account session changed");
-          sqlite.prepare("INSERT INTO world_accounts VALUES(?,?)").run(
-            customerAccountId,
-            JSON.stringify({
-              sessionId: verified.sessionId,
-              appId: c.appId,
-              rpId: c.rpContext.rp_id,
-              environment: c.environment,
-              credential: c.credential,
-              flow: c.flow,
-            }),
-          );
-          latest = { ...latest, sessionId: verified.sessionId };
-        }
         const result = applyPolicy(latest);
         save({
           ...latest,

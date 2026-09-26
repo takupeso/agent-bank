@@ -63,6 +63,11 @@ function save(c: Challenge) {
     )
     .run(c.id, JSON.stringify(c));
 }
+// Public demo sandboxes are disposable and per visitor, so the first World
+// login enrolls the account without an out-of-band ticket.
+export function enrollmentTicketRequired() {
+  return process.env.WORLD_ENROLL_WITHOUT_TICKET !== "true";
+}
 function ticketValid(hash: string | undefined) {
   const t = sqlite
     .prepare(
@@ -89,7 +94,7 @@ function fresh(c: Challenge) {
   const b = worldBinding();
   if (c.purpose === "enroll") {
     if (b) throw new AuthorizationError(409);
-    ticketValid(c.ticketHash);
+    if (c.ticketHash || enrollmentTicketRequired()) ticketValid(c.ticketHash);
   } else if (
     !b ||
     b.sessionId !== c.sessionId ||
@@ -111,7 +116,8 @@ export function beginLogin(
     b = worldBinding();
   if (purpose === "enroll") {
     if (b) throw new AuthorizationError(409);
-    ticketValid(ticket ? hashSecret(ticket) : undefined);
+    if (enrollmentTicketRequired())
+      ticketValid(ticket ? hashSecret(ticket) : undefined);
   } else if (!b) throw new AuthorizationError(403);
   const id = randomUUID();
   const c: Challenge = {
@@ -131,7 +137,9 @@ export function beginLogin(
     ),
     ...(purpose === "login"
       ? { sessionId: b!.sessionId }
-      : { ticketHash: hashSecret(ticket!) }),
+      : enrollmentTicketRequired()
+        ? { ticketHash: hashSecret(ticket!) }
+        : {}),
     status: "pending",
     generation: state.generation,
     authMode: state.mode,
@@ -191,12 +199,14 @@ export async function completeLogin(
       fresh(latest);
       sqlite.prepare("INSERT INTO world_used_proofs VALUES(?)").run(replay);
       if (purpose === "enroll") {
-        const used = sqlite
-          .prepare(
-            "UPDATE bank_enrollment_tickets SET consumed=1 WHERE hash=? AND consumed=0 AND expires>?",
-          )
-          .run(c.ticketHash, Date.now());
-        if (used.changes !== 1) throw new AuthorizationError(409);
+        if (c.ticketHash) {
+          const used = sqlite
+            .prepare(
+              "UPDATE bank_enrollment_tickets SET consumed=1 WHERE hash=? AND consumed=0 AND expires>?",
+            )
+            .run(c.ticketHash, Date.now());
+          if (used.changes !== 1) throw new AuthorizationError(409);
+        }
         sqlite.prepare("INSERT INTO world_accounts VALUES(?,?)").run(
           customerAccountId,
           JSON.stringify({

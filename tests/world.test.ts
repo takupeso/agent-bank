@@ -748,45 +748,28 @@ test("explicit demo cancellation invalidates the pending approval and checks its
   assert.equal(get<Rule>("rules", "payment")?.version, 1);
 });
 
-test("sandbox local-demo binds World to the first approving human only when enabled", async () => {
+test("sandbox enrolls on the first World login without a ticket only when enabled", async () => {
   verifier();
-  demo();
-  const other = (c: C) => ({
-    ...proof(c),
-    session_id: "session_" + "2".repeat(128),
-  });
-  assert.equal(world.worldStatus().enrollOnApproval, false);
-  assert.throws(() => proposal(), auth.AuthorizationError);
-  process.env.WORLD_ENROLL_ON_APPROVAL = "true";
+  assert.throws(() => login.beginLogin("enroll", owner), auth.AuthorizationError);
+  process.env.WORLD_ENROLL_WITHOUT_TICKET = "true";
   try {
-    assert.equal(world.worldStatus().enrollOnApproval, true);
-    const first = proposal();
-    const racing = proposal();
-    const rule = (
-      await world.completeChallenge(first.id, owner, proof(first), human)
-    ).rule!;
-    world.assertRuleApproval(rule);
-    assert.equal(rule.authorization?.approvalMethod, "world");
-    assert.deepEqual(
-      { ...world.worldStatus(), mode: undefined },
-      {
-        required: false,
-        enrolled: true,
-        enrollOnApproval: false,
-        configured: true,
-        mode: undefined,
-      },
-    );
-    // An approval started before binding cannot bind a second human.
+    const stale = login.beginLogin("enroll", owner);
+    delete process.env.WORLD_ENROLL_WITHOUT_TICKET;
     await assert.rejects(
-      world.completeChallenge(racing.id, owner, other(racing), human),
+      login.completeLogin("enroll", stale.id, owner, proof(stale)),
     );
-    // Once bound, only the same human can approve.
-    const next = proposal();
-    await assert.rejects(
-      world.completeChallenge(next.id, owner, other(next), human),
+    process.env.WORLD_ENROLL_WITHOUT_TICKET = "true";
+    const c = login.beginLogin("enroll", owner);
+    const s = await login.completeLogin("enroll", c.id, owner, proof(c));
+    assert.ok(s.token);
+    assert.equal(world.worldStatus().enrolled, true);
+    assert.throws(
+      () => login.beginLogin("enroll", owner),
+      auth.AuthorizationError,
     );
+    const again = login.beginLogin("login", owner);
+    assert.ok(await login.completeLogin("login", again.id, owner, proof(again)));
   } finally {
-    delete process.env.WORLD_ENROLL_ON_APPROVAL;
+    delete process.env.WORLD_ENROLL_WITHOUT_TICKET;
   }
 });
