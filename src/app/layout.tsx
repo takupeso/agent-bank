@@ -27,11 +27,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </Link>
               <Navigation />
               <LogoutButton />
-              <small>
-                TD: local Anvil
-                <br />
-                AI: {aiMode() === "gemini" ? "Gemini" : "stub"} / Asset
-                connections shown on each page
+              <small className="sidebar-env">
+                <span>
+                  <i aria-hidden="true" />
+                  TD · local Anvil
+                </span>
+                <span>
+                  <i aria-hidden="true" />
+                  AI · {aiMode() === "gemini" ? "Gemini" : "stub"}
+                </span>
+                <span>Asset connections are shown on each page</span>
               </small>
             </aside>
             <main id="main">{children}</main>

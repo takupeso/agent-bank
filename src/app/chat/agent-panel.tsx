@@ -5,10 +5,34 @@ import { DemoEvent } from "./demo-event";
 import { Conditions, ProposalCard } from "./rule-card";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Message, Invoice, Mail, Proposal, Rule } from "@/shared/domain";
+const journey = [
+  "Email access",
+  "Approve terms",
+  "Auto-pay",
+  "Invest",
+  "Redeem",
+] as const;
+function journeyProgress(messages: Message[]) {
+  const has = (test: (m: Message) => boolean) => messages.some(test);
+  const lastInvested = messages.findLastIndex(
+    (m) => m.kind === "execution" && m.text.startsWith("Started investing"),
+  );
+  const lastRedeemed = messages.findLastIndex((m) =>
+    m.text.startsWith("Investments redeemed"),
+  );
+  return [
+    has((m) => m.kind === "invoices"),
+    has((m) => m.kind === "rule"),
+    has((m) => m.text.startsWith("Paid ¥")),
+    lastInvested >= 0,
+    lastInvested >= 0 && lastRedeemed > lastInvested,
+  ];
+}
 export function AgentPanel() {
   const conversation = useRef<HTMLElement>(null);
   const tools = useRef<HTMLDetailsElement>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [text, setText] = useState("");
   const [pendingText, setPendingText] = useState("");
   const [approval, setApproval] = useState<{
@@ -25,6 +49,7 @@ export function AgentPanel() {
   useEffect(() => {
     apiFetch("/api/chat/messages").then(async (r) => {
       if (r.ok) setMessages(await r.json());
+      setLoaded(true);
     });
   }, []);
   useLayoutEffect(() => {
@@ -105,21 +130,84 @@ export function AgentPanel() {
     });
     return proposalIndex > ruleIndex;
   }
+  const progress = journeyProgress(messages);
+  const current = progress.indexOf(false);
+  const locked = busy || !!approval || !!mailPermission;
+  const refreshMessages = () => {
+    window.dispatchEvent(new Event("agent-bank:invoices-updated"));
+    apiFetch("/api/chat/messages").then(async (r) => {
+      if (r.ok) setMessages(await r.json());
+    });
+  };
+  const nextStep = !loaded
+    ? undefined
+    : current === 0
+      ? {
+          label: "Allow email access",
+          hint: "The agent reads only the sample emails you approve.",
+          run: () =>
+            send("I allow access to my emails. Please check the invoices."),
+        }
+      : current === 1 && hasUnacceptedProposal("payment")
+        ? {
+            label: "Review and approve terms",
+            hint: "Approve payment and investment limits in one step.",
+            run: () => send("Confirm these settings"),
+          }
+        : current === 2
+          ? { label: "Simulate the payment due date", hint: "", run: undefined }
+          : current === 3
+            ? {
+                label: "Invest available funds",
+                hint: "Funds for payments and the safety buffer stay put.",
+                run: () => send("Invest my available funds"),
+              }
+            : current === 4
+              ? {
+                  label: "Redeem investments",
+                  hint: "Return invested funds to your deposit account.",
+                  run: () => send("Redeem all investments to TD"),
+                }
+              : undefined;
   return (
     <aside id="agent-panel" className="agent-panel" aria-label="Agent chat">
       <header className="agent-panel-header">
+        <span className="agent-avatar" aria-hidden="true" />
         <div>
           <h2>Agent</h2>
-          <p>Send a request or ask a question anytime</p>
+          <p>
+            <span className="agent-status" aria-hidden="true" />
+            Acts only within the terms you approve
+          </p>
         </div>
       </header>
+      <ol
+        className={"agent-journey" + (loaded ? "" : " loading")}
+        aria-label="Demo progress"
+      >
+        {journey.map((step, index) => (
+          <li
+            key={step}
+            className={
+              progress[index] ? "done" : index === current ? "current" : ""
+            }
+            aria-current={index === current ? "step" : undefined}
+          >
+            <span aria-hidden="true">{progress[index] ? "✓" : index + 1}</span>
+            {step}
+          </li>
+        ))}
+      </ol>
       <section
         ref={conversation}
         className="agent-conversation"
         aria-live="polite"
       >
         {messages.map((m) => (
-          <article className={"message " + m.role} key={m.id}>
+          <article
+            className={"message " + m.role + (m.kind ? " kind-" + m.kind : "")}
+            key={m.id}
+          >
             <small>{m.role === "user" ? "You" : "Agent"}</small>
             <p>
               {m.text
@@ -197,6 +285,34 @@ export function AgentPanel() {
           </article>
         )}
       </section>
+      {nextStep && (
+        <div className="agent-next">
+          <div>
+            <span>Next step</span>
+            {nextStep.hint && <p>{nextStep.hint}</p>}
+          </div>
+          {nextStep.run ? (
+            <button
+              type="button"
+              aria-label={`Next step: ${nextStep.label}`}
+              disabled={locked}
+              onClick={() => {
+                setError("");
+                void nextStep.run!();
+              }}
+            >
+              {nextStep.label}
+            </button>
+          ) : (
+            <DemoEvent
+              onError={setError}
+              type="due_date_reached"
+              label={nextStep.label}
+              onComplete={refreshMessages}
+            />
+          )}
+        </div>
+      )}
       <details ref={tools} className="agent-tools">
         <summary>Demo actions and common requests</summary>
         <div
@@ -294,7 +410,7 @@ export function AgentPanel() {
             id="chat-input"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Review my emails and automate payments"
+            placeholder="Ask about payments, investments, or rules…"
           />
           <button
             disabled={busy || !!approval || !!mailPermission || !text.trim()}

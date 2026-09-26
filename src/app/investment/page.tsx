@@ -36,7 +36,7 @@ export default function Investment() {
   }, []);
   return (
     <>
-      <header>
+      <header className="page-header">
         <h1>Investment plan</h1>
         <p>Keep funds for month-end needs and invest the available balance.</p>
       </header>
@@ -47,6 +47,19 @@ export default function Investment() {
               <div className="plan-total">
                 <h2 id="deposit-balance-title">Deposit balance</h2>
                 <strong>¥{BigInt(flow.td).toLocaleString("en-US")}</strong>
+              </div>
+              {BigInt(flow.td) > 0n && (
+                <div className="plan-bar" aria-hidden="true">
+                  <span
+                    style={{
+                      width: `${BigInt(flow.reserveJpy) >= BigInt(flow.td) ? 100n : (BigInt(flow.reserveJpy) * 100n) / BigInt(flow.td)}%`,
+                    }}
+                  />
+                </div>
+              )}
+              <div className="plan-legend" aria-hidden="true">
+                <span className="reserve">Reserved</span>
+                <span className="available">Investable</span>
               </div>
             </section>
             <section className="panel" aria-labelledby="reserved-funds-title">

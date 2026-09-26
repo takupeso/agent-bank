@@ -28,13 +28,13 @@ export default function Invoices() {
   }, []);
   return (
     <>
-      <header>
+      <header className="page-header">
         <h1>Payments</h1>
         <p>Configured payments and their payment status.</p>
       </header>
       {data.invoices.map((i) => (
         <section className="panel" id={i.id} key={i.id}>
-          <span className="badge">
+          <span className={`badge ${i.status}`}>
             {i.status === "paid" ? "Paid" : "Scheduled"}
           </span>
           <h2>{i.issuer}</h2>

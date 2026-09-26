@@ -23,15 +23,20 @@ function AccountCard({
   subtitle,
   balance,
   movements,
+  tone,
 }: {
   title: string;
   subtitle?: string;
   balance: string;
   movements: AccountMovement[];
+  tone: "deposit" | "token" | "aave" | "morpho";
 }) {
   return (
-    <section className="account-card">
+    <section className={`account-card ${tone}`}>
       <div className="account-card-header">
+        <span className="account-icon" aria-hidden="true">
+          {title.slice(0, 1)}
+        </span>
         <div>
           <h2>{title}</h2>
           {subtitle && <p>{subtitle}</p>}
@@ -50,7 +55,7 @@ function AccountCard({
                   className={`movement-direction ${movement.direction}`}
                   aria-label={movement.direction === "in" ? "Credit" : "Debit"}
                 >
-                  {movement.direction === "in" ? "Credit" : "Debit"}
+                  {movement.direction === "in" ? "↓" : "↑"}
                 </span>
                 <span className="movement-label">{movement.label}</span>
                 <strong className={movement.direction}>
@@ -127,49 +132,66 @@ export default function Home() {
     movements.filter((movement) => movement.account === account);
   return (
     <>
-      <header>
-        <h1>Accounts</h1>
-        <p>
-          View balances and transactions across your deposit and investment
-          accounts.
-        </p>
+      <header className="page-header">
+        <div>
+          <h1>Accounts</h1>
+          <p>
+            View balances and transactions across your deposit and investment
+            accounts.
+          </p>
+        </div>
+        <div className="toolbar">
+          <span className="badge">
+            {data.mode === "sepolia" ? "Sepolia demo" : "Local demo"}
+            {data.profile === "ten-usdc" ? " · 10 USDC starter" : ""}
+          </span>
+          <button
+            className="secondary"
+            onClick={() => void reset()}
+            disabled={busy}
+          >
+            {busy
+              ? "Initializing…"
+              : data.initialized
+                ? "Reset demo"
+                : "Initialize demo"}
+          </button>
+        </div>
       </header>
-      <div className="toolbar">
-        <span className="badge">
-          {data.mode === "sepolia" ? "Sepolia demo" : "Local demo"}
-          {data.profile === "ten-usdc" ? " · 10 USDC starter" : ""}
-        </span>
-        <button onClick={() => void reset()} disabled={busy}>
-          {busy
-            ? "Initializing…"
-            : data.initialized
-              ? "Reset demo"
-              : "Initialize demo"}
-        </button>
-      </div>
       {error && <p role="alert">{error}</p>}
       {refreshError && <p role="status">{refreshError}</p>}
+
+      {!data.initialized && (
+        <p className="empty-hint">
+          Initialize the demo to fund Account A, then follow the next step in
+          the agent panel.
+        </p>
+      )}
 
       <div className="account-list">
         <AccountCard
           title="Deposit account"
           subtitle="Account A"
+          tone="deposit"
           balance={yen(data.td ?? "0")}
           movements={forAccount("deposit")}
         />
         <AccountCard
           title="Token account"
+          tone="token"
           balance={`${formatUsdc(data.looseUsdc ?? "0")} USDC`}
           movements={forAccount("token")}
         />
         <AccountCard
           title="Aave"
+          tone="aave"
           subtitle={data.mode === "sepolia" ? "Base Sepolia" : "Local stub"}
           balance={`${formatUsdc(data.positionUsdc ?? "0")} USDC`}
           movements={forAccount("aave")}
         />
         <AccountCard
           title="Morpho"
+          tone="morpho"
           subtitle="Not connected"
           balance="—"
           movements={[]}

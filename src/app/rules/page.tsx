@@ -139,7 +139,7 @@ export default function Rules() {
   );
   return (
     <>
-      <header>
+      <header className="page-header">
         <h1>Automation rules</h1>
         <p>Review what the agent can do and the approved terms.</p>
       </header>
@@ -189,7 +189,9 @@ export default function Rules() {
           const r = drafts[saved.id] ?? saved;
           return (
             <section className="panel rule-settings" key={saved.id}>
-              <span className="badge">
+              <span
+                className={`badge ${saved.status === "active" && saved.enabled ? "active" : "paused"}`}
+              >
                 {saved.status === "reapproval-required"
                   ? "Awaiting reapproval"
                   : saved.enabled
@@ -376,7 +378,9 @@ export default function Rules() {
         )}
         {visibleGrants.map((g) => (
           <section className="panel permission-summary" key={g.id}>
-            <span className="badge">
+            <span
+              className={`badge ${g.status === "active" ? "active" : "paused"}`}
+            >
               {g.status === "active"
                 ? "Approved"
                 : g.status === "revoked"
