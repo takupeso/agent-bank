@@ -11,7 +11,7 @@ import {
   AuthorizationError,
   type Principal,
 } from "../../server/auth";
-import { verifiedWorldCheck } from "../world-agents/service";
+import { consumeWorldCheck, verifiedWorldCheck } from "../world-agents/service";
 import { worldAgentsConfig } from "../../integrations/world-agents";
 import { balance } from "../../integrations/td-ledger";
 
@@ -186,6 +186,7 @@ export function grantBalance(
         hashSecret(proof.requestId),
         JSON.stringify(grant),
       );
+    consumeWorldCheck(browser);
     return {
       token,
       grantId: grant.id,

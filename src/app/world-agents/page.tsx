@@ -11,6 +11,7 @@ type Status = {
     | "pending"
     | "verifying"
     | "verified"
+    | "used"
     | "cancelled"
     | "expired"
     | "failed";
@@ -20,6 +21,7 @@ const messages: Record<Exclude<Status["status"], "verified">, string> = {
   pending:
     "Waiting for verification. Complete it on World or cancel this request.",
   verifying: "Checking your verification result.",
+  used: "Your last verification was used for an agent approval. Verify again to approve another agent.",
   cancelled: "Verification cancelled. No banking access was granted.",
   expired: "Verification expired. Start again to continue.",
   failed: "Verification failed. No banking access was granted.",
@@ -87,16 +89,14 @@ export default function WorldAgentsPage() {
             </Link>
           </p>
         )}
-        <button
-          disabled={!status?.configured || busy}
-          onClick={() => void act("begin")}
-        >
-          {busy
-            ? "Connecting…"
-            : status?.status === "verified"
-              ? "Verify again with World"
-              : "Verify with World"}
-        </button>
+        {status?.status !== "verified" && (
+          <button
+            disabled={!status?.configured || busy}
+            onClick={() => void act("begin")}
+          >
+            {busy ? "Connecting…" : "Verify with World"}
+          </button>
+        )}
         {status && ["pending", "verifying"].includes(status.status) && (
           <button
             className="secondary"

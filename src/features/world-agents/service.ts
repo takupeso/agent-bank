@@ -16,6 +16,7 @@ type Status =
   | "pending"
   | "verifying"
   | "verified"
+  | "used"
   | "cancelled"
   | "expired"
   | "failed";
@@ -191,6 +192,12 @@ export async function completeWorldCheck(browser: string, url: URL) {
     }
     throw new Error("World verification did not complete");
   }
+}
+
+export function consumeWorldCheck(browser: string) {
+  const a = read(browser)!;
+  a.previous = a.identity;
+  terminal(a, "used");
 }
 
 // This accessor stays server-only; callers must separately prove account ownership.
