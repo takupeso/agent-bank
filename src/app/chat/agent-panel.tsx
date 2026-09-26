@@ -6,7 +6,6 @@ import { PaymentPlanCard } from "./payment-plan-card";
 import { Conditions, ProposalCard } from "./rule-card";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Message, Invoice, Mail, Proposal, Rule } from "@/shared/domain";
-const journey = ["Access", "Approve", "Invest", "Pay", "Redeem"] as const;
 function journeyProgress(messages: Message[]) {
   const has = (test: (m: Message) => boolean) => messages.some(test);
   const lastInvested = messages.findLastIndex((m) =>
@@ -192,23 +191,6 @@ export function AgentPanel() {
           </p>
         </div>
       </header>
-      <ol
-        className={"agent-journey" + (loaded ? "" : " loading")}
-        aria-label="Demo progress"
-      >
-        {journey.map((step, index) => (
-          <li
-            key={step}
-            className={
-              progress[index] ? "done" : index === current ? "current" : ""
-            }
-            aria-current={index === current ? "step" : undefined}
-          >
-            <span aria-hidden="true">{progress[index] ? "✓" : index + 1}</span>
-            {step}
-          </li>
-        ))}
-      </ol>
       <section
         ref={conversation}
         className="agent-conversation"

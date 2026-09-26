@@ -1,7 +1,6 @@
 "use client";
 import { apiFetch } from "./api-client";
 import { formatUsdc } from "@/shared/format";
-import { MoneyFlow } from "./money-flow";
 import type { AccountMovement } from "@/shared/domain";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -25,12 +24,14 @@ function AccountCard({
   balance,
   movements,
   tone,
+  fresh,
 }: {
   title: string;
   subtitle?: string;
   balance: string;
   movements: AccountMovement[];
-  tone: "deposit" | "token" | "aave" | "morpho";
+  tone: "deposit" | "token" | "aave";
+  fresh: ReadonlySet<string>;
 }) {
   return (
     <section className={`account-card ${tone}`}>
@@ -50,8 +51,16 @@ function AccountCard({
         <h3>Transactions</h3>
         {movements.length ? (
           <ul>
-            {movements.slice(0, 4).map((movement) => (
-              <li key={movement.id}>
+            {movements.slice(0, 4).map((movement, index) => (
+              <li
+                key={movement.id}
+                className={fresh.has(movement.id) ? "fresh" : undefined}
+                style={
+                  fresh.has(movement.id)
+                    ? { animationDelay: `${index * 120}ms` }
+                    : undefined
+                }
+              >
                 <span
                   className={`movement-direction ${movement.direction}`}
                   aria-label={movement.direction === "in" ? "Credit" : "Debit"}
@@ -81,6 +90,9 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [refreshError, setRefreshError] = useState("");
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
+  const seen = useRef<Set<string> | null>(null);
+  const freshTimer = useRef<number | undefined>(undefined);
   const loading = useRef(false);
   const load = useCallback(async () => {
     if (loading.current) return;
@@ -132,6 +144,20 @@ export default function Home() {
     }
   }
   const movements = data.movements ?? [];
+  useEffect(() => {
+    const ids = data.movements?.map((m) => m.id) ?? [];
+    if (seen.current === null) {
+      if (ids.length) seen.current = new Set(ids);
+      return;
+    }
+    const added = ids.filter((id) => !seen.current!.has(id));
+    seen.current = new Set(ids);
+    if (!added.length) return;
+    setFresh(new Set(added));
+    window.clearTimeout(freshTimer.current);
+    freshTimer.current = window.setTimeout(() => setFresh(new Set()), 2600);
+  }, [data.movements]);
+  useEffect(() => () => window.clearTimeout(freshTimer.current), []);
   const forAccount = (account: AccountMovement["account"]) =>
     movements.filter((movement) => movement.account === account);
   return (
@@ -174,8 +200,6 @@ export default function Home() {
         </p>
       )}
 
-      <MoneyFlow movements={movements} />
-
       <div className="account-list">
         <AccountCard
           title="Deposit account"
@@ -183,12 +207,14 @@ export default function Home() {
           tone="deposit"
           balance={yen(data.td ?? "0")}
           movements={forAccount("deposit")}
+          fresh={fresh}
         />
         <AccountCard
           title="Token account"
           tone="token"
           balance={`${formatUsdc(data.looseUsdc ?? "0")} USDC`}
           movements={forAccount("token")}
+          fresh={fresh}
         />
         <AccountCard
           title="Aave"
@@ -196,6 +222,7 @@ export default function Home() {
           subtitle={data.mode === "sepolia" ? "Base Sepolia" : "Local stub"}
           balance={`${formatUsdc(data.positionUsdc ?? "0")} USDC`}
           movements={forAccount("aave")}
+          fresh={fresh}
         />
       </div>
     </>
