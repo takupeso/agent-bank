@@ -393,15 +393,6 @@ header p {
   align-items: center;
   gap: 12px;
 }
-.empty-hint {
-  margin: 0 0 16px;
-  padding: 14px 18px;
-  border: 1px dashed #c7cdf8;
-  border-radius: var(--radius-sm);
-  background: var(--accent-soft);
-  color: var(--accent-ink);
-  font-size: 13px;
-}
 
 /* Panels */
 .panel {
