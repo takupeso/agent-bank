@@ -1,20 +1,19 @@
+import { runDemoEvent, sendChat } from "./helpers";
 import { test, expect, demoApprove } from "./helpers";
-import { openDemoActions } from "./helpers";
 test("due date pays once with receipt and current monthly usage", async ({
   page,
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
-  await expect(page.locator("main").getByText("¥1,000,000", { exact: true })).toBeVisible();
+  await expect(
+    page.locator("main").getByText("¥1,000,000", { exact: true }),
+  ).toBeVisible();
   await page.goto("/chat");
-  await openDemoActions(page);
-  await openDemoActions(page);
-  await page
-    .getByRole("button", {
-      name: "I allow access to my emails. Please check the invoices.",
-      exact: true,
-    })
-    .click();
+
+  await sendChat(
+    page,
+    "I allow access to my emails. Please check the invoices.",
+  );
   await demoApprove(page);
   await expect(
     page.getByText("Automatic payment proposal", { exact: true }),
@@ -22,7 +21,7 @@ test("due date pays once with receipt and current monthly usage", async ({
   await page.getByText("View source email", { exact: true }).first().click();
   await expect(
     page.getByText(
-      "Please find attached the invoice for September design services totaling JPY 200,000. Payment is due by September 22 at 12:00 JST.",
+      "Please find attached the invoice for September design services totaling JPY 200,000. Payment is due by October 1 at 12:00 JST.",
       { exact: true },
     ),
   ).toBeVisible();
@@ -36,29 +35,18 @@ test("due date pays once with receipt and current monthly usage", async ({
     ),
   ).toBeVisible();
   await page.goto("/chat");
-  await openDemoActions(page);
-  await openDemoActions(page);
-  await page
-    .getByRole("button", {
-      name: "Confirm payment setup",
-      exact: true,
-    })
-    .click();
+
+  await sendChat(page, "Confirm these settings");
   await demoApprove(page);
-  await expect(
-    page.getByText("Approval", { exact: true }),
-  ).toHaveCount(2);
+  await expect(page.getByText("Approval", { exact: true })).toHaveCount(2);
   await page.goto("/invoices");
   await expect(
     page.getByRole("heading", { name: "Sakura Office", exact: true }),
   ).toBeVisible();
   await expect(page.getByText("Scheduled", { exact: true })).toHaveCount(2);
   await page.goto("/chat");
-  await openDemoActions(page);
-  await openDemoActions(page);
-  await page
-    .getByRole("button", { name: "Demo: advance to payment due date" })
-    .click();
+
+  await runDemoEvent(page, "due_date_reached");
   await expect(
     page.getByText("Paid ¥200,000 to Aoba Design.", {
       exact: true,
@@ -67,16 +55,9 @@ test("due date pays once with receipt and current monthly usage", async ({
   const first = await (await page.request.get("/api/dashboard")).json();
   expect(first.td).toBe("400000");
   expect(first.recipientTd).toBe("200000");
-  await openDemoActions(page);
-  await page
-    .getByRole("button", { name: "Demo: advance to payment due date" })
-    .click();
-  await expect(
-    page.getByRole("button", {
-      name: "Demo: advance to payment due date",
-      includeHidden: true,
-    }),
-  ).toBeEnabled();
+
+  await runDemoEvent(page, "due_date_reached");
+
   const second = await (await page.request.get("/api/dashboard")).json();
   expect(second.td).toBe("400000");
   await page.screenshot({ path: "/tmp/td-bank-pay.png", fullPage: true });

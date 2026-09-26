@@ -38,6 +38,13 @@ import { requireWorldEnrollment, worldRequired } from "../world/service";
 export async function reset(principal: Principal) {
   requirePrincipal(principal, "human");
   requireWorldEnrollment();
+  if (
+    current() &&
+    all<{ status: string }>("demo_date_changes").some(
+      (change) => change.status !== "completed",
+    )
+  )
+    throw new Error("Resolve the date operation before resetting");
   const profile = process.env.DEMO_PROFILE ?? "standard";
   if (!["standard", "ten-usdc"].includes(profile))
     throw new Error("Invalid demo profile");
@@ -79,7 +86,7 @@ export async function reset(principal: Principal) {
     if (!result.events.length) throw new Error("Missing mint evidence");
     const state = {
       id,
-      clock: "2026-09-22T00:00:00.000Z",
+      clock: "2026-09-29T00:00:00.000Z",
       token,
       vault,
       customer,
@@ -137,11 +144,17 @@ export async function dashboard() {
     usdcUnits: string;
     status: "locked" | "invested" | "redeemed";
     runId: string;
+    publicOperationId?: string;
+    funded?: boolean;
   }>("investment_orders").map((order) => ({
     ...order,
     transferred:
-      order.status !== "locked" || confirmedStep(order.id + ":bank:transfer"),
-    supplied: order.status !== "locked" || confirmedStep(order.id + ":supply"),
+      order.status !== "locked" ||
+      order.funded ||
+      confirmedStep((order.publicOperationId ?? order.id) + ":bank:transfer"),
+    supplied:
+      order.status !== "locked" ||
+      confirmedStep((order.publicOperationId ?? order.id) + ":supply"),
   }));
   const latestInvestment = [...runs]
     .reverse()
@@ -278,7 +291,7 @@ export async function dashboard() {
     investmentProgress,
     movements: movements.reverse(),
     publicWallet: walletInfo(customerAccountId),
-    looseUsdc: "0",
+    looseUsdc: (s.looseUsdc as string) ?? "0",
     ...publicBalances,
     mode: s.publicMode ?? "stub",
   };

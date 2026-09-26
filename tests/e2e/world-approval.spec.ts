@@ -1,4 +1,5 @@
-import { test, expect, demoApprove, openDemoActions } from "./helpers";
+import { sendChat } from "./helpers";
+import { test, expect, demoApprove } from "./helpers";
 import { test as unauthenticated } from "@playwright/test";
 
 unauthenticated(
@@ -49,15 +50,14 @@ test("World unavailable permits explicit scoped demo consent; OK alone changes n
   await page.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
   expect((await reset).ok()).toBeTruthy();
   await page.reload();
-  await expect(page.locator("main").getByText("¥1,000,000", { exact: true })).toBeVisible();
-  await openDemoActions(page);
-  await openDemoActions(page);
-  await page
-    .getByRole("button", {
-      name: "I allow access to my emails. Please check the invoices.",
-      exact: true,
-    })
-    .click();
+  await expect(
+    page.locator("main").getByText("¥1,000,000", { exact: true }),
+  ).toBeVisible();
+
+  await sendChat(
+    page,
+    "I allow access to my emails. Please check the invoices.",
+  );
   const mail = page.getByRole("region", { name: "Email access confirmation" });
   const proposal = page.getByText("Automatic payment proposal");
   await Promise.race([mail.waitFor(), proposal.waitFor()]);
@@ -71,13 +71,8 @@ test("World unavailable permits explicit scoped demo consent; OK alone changes n
     await mail.getByRole("button", { name: "Authorize and review" }).click();
   }
   await expect(proposal).toBeVisible();
-  await openDemoActions(page);
-  await page
-    .getByRole("button", {
-      name: "Confirm payment setup",
-      exact: true,
-    })
-    .click();
+
+  await sendChat(page, "Confirm these settings");
   expect(await (await page.request.get("/api/rules")).json()).toEqual([]);
   const panel = page.getByRole("region", { name: "World approval" });
   const begun = page.waitForResponse(
@@ -97,13 +92,8 @@ test("World unavailable permits explicit scoped demo consent; OK alone changes n
   });
   expect(replay.status()).toBe(409);
   expect(await (await page.request.get("/api/rules")).json()).toEqual([]);
-  await openDemoActions(page);
-  await page
-    .getByRole("button", {
-      name: "Confirm payment setup",
-      exact: true,
-    })
-    .click();
+
+  await sendChat(page, "Confirm these settings");
   await demoApprove(page);
   await expect(
     page.getByText(/Approval method: Demo approval \(without World\)/),
@@ -176,7 +166,9 @@ test("World begin failure still offers explicit demo approval", async ({
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
-  await expect(page.locator("main").getByText("¥1,000,000", { exact: true })).toBeVisible();
+  await expect(
+    page.locator("main").getByText("¥1,000,000", { exact: true }),
+  ).toBeVisible();
   await page.route("**/api/world", async (route) => {
     if (route.request().method() === "GET")
       await route.fulfill({
@@ -194,19 +186,16 @@ test("World begin failure still offers explicit demo approval", async ({
         json: { error: "Verifier unavailable" },
       });
   });
-  await openDemoActions(page);
-  await openDemoActions(page);
-  await page
-    .getByRole("button", {
-      name: "I allow access to my emails. Please check the invoices.",
-      exact: true,
-    })
-    .click();
+
+  await sendChat(
+    page,
+    "I allow access to my emails. Please check the invoices.",
+  );
   const mail = page.getByRole("region", { name: "Email access confirmation" });
   await mail.getByRole("button", { name: "Authorize and review" }).click();
   await expect(page.getByText("Automatic payment proposal")).toBeVisible();
-  await openDemoActions(page);
-  await page.getByRole("button", { name: "Confirm payment setup" }).click();
+
+  await sendChat(page, "Confirm these settings");
   const panel = page.getByRole("region", { name: "World approval" });
   await expect(panel.getByRole("alert")).toBeVisible();
   await panel.getByRole("button", { name: "Continue as demo" }).click();
@@ -218,7 +207,5 @@ test("World begin failure still offers explicit demo approval", async ({
   await panel
     .getByRole("button", { name: "Approve these terms in demo" })
     .click();
-  await expect(
-    page.getByText("Approval", { exact: true }),
-  ).toHaveCount(2);
+  await expect(page.getByText("Approval", { exact: true })).toHaveCount(2);
 });

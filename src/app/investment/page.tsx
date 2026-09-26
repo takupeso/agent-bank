@@ -4,6 +4,7 @@ import { formatUsdc } from "@/shared/format";
 import { useEffect, useState } from "react";
 import { DemoEvent } from "../chat/demo-event";
 type Flow = {
+  paymentPlan?: boolean;
   td: string;
   confirmedJpy: string;
   predictedJpy: string;
@@ -51,11 +52,16 @@ export default function Investment() {
             </section>
             <section className="panel" aria-labelledby="reserved-funds-title">
               <div className="plan-total">
-                <h2 id="reserved-funds-title">Reserved funds</h2>
+                <h2 id="reserved-funds-title">
+                  {flow.paymentPlan ? "Upcoming payments" : "Reserved funds"}
+                </h2>
                 <strong>
                   ¥{BigInt(flow.reserveJpy).toLocaleString("en-US")}
                 </strong>
               </div>
+              {flow.paymentPlan && (
+                <p>These funds stay invested until each payment is needed.</p>
+              )}
               <section
                 className="plan-breakdown"
                 aria-labelledby="reserve-breakdown-title"

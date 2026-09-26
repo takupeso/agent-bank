@@ -116,6 +116,9 @@ export default function Home() {
         throw new Error(result.error ?? "Unable to initialize the demo");
       }
       await load();
+      window.dispatchEvent(new Event("agent-bank:demo-reset"));
+      window.dispatchEvent(new Event("agent-bank:invoices-updated"));
+      window.dispatchEvent(new Event("agent-bank:rules-updated"));
     } catch (e) {
       setError(String(e));
     } finally {
@@ -135,10 +138,10 @@ export default function Home() {
         </p>
       </header>
       <div className="toolbar">
-        <span className="badge">
-          {data.mode === "sepolia" ? "Sepolia demo" : "Local demo"}
-          {data.profile === "ten-usdc" ? " · 10 USDC starter" : ""}
-        </span>
+        {data.mode !== "sepolia" && <span className="badge">Local demo</span>}
+        {data.profile === "ten-usdc" && (
+          <span className="badge">10 USDC starter</span>
+        )}
         <button onClick={() => void reset()} disabled={busy}>
           {busy
             ? "Initializing…"
@@ -167,12 +170,6 @@ export default function Home() {
           subtitle={data.mode === "sepolia" ? "Base Sepolia" : "Local stub"}
           balance={`${formatUsdc(data.positionUsdc ?? "0")} USDC`}
           movements={forAccount("aave")}
-        />
-        <AccountCard
-          title="Morpho"
-          subtitle="Not connected"
-          balance="—"
-          movements={[]}
         />
       </div>
     </>

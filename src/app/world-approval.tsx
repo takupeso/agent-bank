@@ -169,6 +169,7 @@ export function WorldApproval({
   const names: Record<string, string> = {
     read: "Read banking data",
     propose: "Propose terms",
+    card: "Read selected card statements",
     mail: "Read selected emails",
     payment: "Payments within approved terms",
     investment: "Investments within approved terms",
@@ -229,13 +230,22 @@ export function WorldApproval({
               ).map((r) => (
                 <div className="approval-recipient" key={r.recipientId}>
                   <h4>
-                    {r.recipientId === "aoba" ? "Aoba Design" : "Sakura Office"}
+                    {r.recipientId === "aoba"
+                      ? "Aoba Design"
+                      : r.recipientId === "sakura"
+                        ? "Sakura Office"
+                        : "Harp Card"}
                   </h4>
                   <p className="approval-caption">
                     Agent Bank · Harp Branch
                     <br />
                     Deposit account{" "}
-                    {r.recipientId === "aoba" ? "0000001" : "0000002"} (demo)
+                    {r.recipientId === "aoba"
+                      ? "0000001"
+                      : r.recipientId === "sakura"
+                        ? "0000002"
+                        : "0000003"}{" "}
+                    (demo)
                   </p>
                   <dl className="approval-fields">
                     <div>

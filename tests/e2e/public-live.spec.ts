@@ -26,7 +26,7 @@ test("Sepolia principal round trip with Anvil TD and on-chain receipts", async (
   };
   await post("/api/demo/reset", {});
   await page.goto("/");
-  await expect(page.getByText(/Sepolia demo/)).toBeVisible();
+  await expect(page.getByText("Sepolia demo", { exact: true })).toHaveCount(0);
   let messages = await post("/api/chat/messages", {
     text: "I allow access to my emails. Please check the invoices.",
   });
@@ -91,7 +91,9 @@ test("Sepolia principal round trip with Anvil TD and on-chain receipts", async (
   expect(after.treasuryUsdc).toBe(before.treasuryUsdc);
   await page.goto("/investment");
   await expect(page.getByText(/Base Sepolia/)).toBeVisible();
-  await expect(page.locator("main").getByText("¥800,000", { exact: true })).toBeVisible();
+  await expect(
+    page.locator("main").getByText("¥800,000", { exact: true }),
+  ).toBeVisible();
   await page.screenshot({
     path: "/tmp/td-sepolia-live-redeemed.png",
     fullPage: true,

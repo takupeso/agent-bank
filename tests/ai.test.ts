@@ -16,7 +16,7 @@ const mail: Mail = {
     issuer: "Aoba Design",
     recipientId: "aoba",
     amountJpy: "200000",
-    dueAt: "2026-09-22T03:00:00.000Z",
+    dueAt: "2026-10-01T03:00:00.000Z",
     recurrenceKey: "aoba-services",
   },
 };

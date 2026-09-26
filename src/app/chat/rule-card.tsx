@@ -4,11 +4,15 @@ export function Conditions({ rule }: { rule: Proposal["conditions"] | Rule }) {
     <div>
       {rule.paymentRecipients.map((recipient) => (
         <p key={recipient.recipientId}>
-          {recipient.recipientId === "aoba" ? "Aoba Design" : "Sakura Office"}:
-          Per payment ¥{BigInt(recipient.maxPaymentJpy).toLocaleString("en-US")}{" "}
-          / Monthly total ¥
-          {BigInt(recipient.monthlyLimitJpy).toLocaleString("en-US")} · Pay on
-          due date
+          {recipient.recipientId === "aoba"
+            ? "Aoba Design"
+            : recipient.recipientId === "sakura"
+              ? "Sakura Office"
+              : "Harp Card"}
+          : Per payment ¥
+          {BigInt(recipient.maxPaymentJpy).toLocaleString("en-US")} / Monthly
+          total ¥{BigInt(recipient.monthlyLimitJpy).toLocaleString("en-US")} ·
+          Pay on due date
         </p>
       ))}
     </div>

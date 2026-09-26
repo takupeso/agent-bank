@@ -1,5 +1,5 @@
+import { sendChat } from "./helpers";
 import { test, expect, demoApprove } from "./helpers";
-import { openDemoActions } from "./helpers";
 test("chat consent persists a versioned rule then change and stop", async ({
   page,
 }) => {
@@ -9,25 +9,17 @@ test("chat consent persists a versioned rule then change and stop", async ({
     page.locator("main").getByText("¥1,000,000", { exact: true }),
   ).toBeVisible();
   await page.goto("/chat");
-  await openDemoActions(page);
-  await openDemoActions(page);
-  await page
-    .getByRole("button", {
-      name: "I allow access to my emails. Please check the invoices.",
-      exact: true,
-    })
-    .click();
+
+  await sendChat(
+    page,
+    "I allow access to my emails. Please check the invoices.",
+  );
   await demoApprove(page);
   await expect(
     page.getByText("Automatic payment proposal", { exact: true }),
   ).toBeVisible();
-  await openDemoActions(page);
-  await page
-    .getByRole("button", {
-      name: "Confirm payment setup",
-      exact: true,
-    })
-    .click();
+
+  await sendChat(page, "Confirm these settings");
   const approval = page.getByRole("region", { name: "World approval" });
   await approval
     .getByRole("button", { name: "Continue as demo", exact: true })

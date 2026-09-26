@@ -1,26 +1,25 @@
+import { sendChat } from "./helpers";
 import { test, expect, demoApprove } from "./helpers";
-import { openDemoActions } from "./helpers";
 
 test("mail evidence is visible before consent and invoices wait for consent", async ({
   page,
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
-  await expect(page.locator("main").getByText("¥1,000,000", { exact: true })).toBeVisible();
+  await expect(
+    page.locator("main").getByText("¥1,000,000", { exact: true }),
+  ).toBeVisible();
   await page.goto("/chat");
-  await openDemoActions(page);
-  await openDemoActions(page);
-  await page
-    .getByRole("button", {
-      name: "I allow access to my emails. Please check the invoices.",
-      exact: true,
-    })
-    .click();
+
+  await sendChat(
+    page,
+    "I allow access to my emails. Please check the invoices.",
+  );
   await demoApprove(page);
   await page.getByText("View source email", { exact: true }).first().click();
   await expect(
     page.getByText(
-      "Please find attached the invoice for September design services totaling JPY 200,000. Payment is due by September 22 at 12:00 JST.",
+      "Please find attached the invoice for September design services totaling JPY 200,000. Payment is due by October 1 at 12:00 JST.",
       { exact: true },
     ),
   ).toBeVisible();
