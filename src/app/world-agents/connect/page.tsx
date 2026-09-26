@@ -195,7 +195,10 @@ export default function ConnectAccountPage() {
                     maxLength={60}
                   />
                 </label>
-                <p>Balance access · Available and locked TD · 15 minutes</p>
+                <p>
+                  Balance access · Available and locked TD ·{" "}
+                  {allowRedemption ? 5 : 15} minutes
+                </p>
                 <label>
                   <input
                     type="checkbox"
