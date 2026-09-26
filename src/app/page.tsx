@@ -12,15 +12,10 @@ type View = {
   positionUsdc?: string;
   looseUsdc?: string;
   movements?: AccountMovement[];
-  investmentProgress?: {
-    runId: string;
-    status: "running" | "completed" | "needs_attention";
-    completedStages: number;
-  } | null;
 };
 
 function yen(value: string) {
-  return `¥${BigInt(value).toLocaleString("ja-JP")}`;
+  return `¥${BigInt(value).toLocaleString("en-US")}`;
 }
 
 function AccountCard({
@@ -46,16 +41,16 @@ function AccountCard({
         </strong>
       </div>
       <div className="account-activity">
-        <h3>入出金</h3>
+        <h3>Transactions</h3>
         {movements.length ? (
           <ul>
             {movements.slice(0, 4).map((movement) => (
               <li key={movement.id}>
                 <span
                   className={`movement-direction ${movement.direction}`}
-                  aria-label={movement.direction === "in" ? "入金" : "出金"}
+                  aria-label={movement.direction === "in" ? "Credit" : "Debit"}
                 >
-                  {movement.direction === "in" ? "入金" : "出金"}
+                  {movement.direction === "in" ? "Credit" : "Debit"}
                 </span>
                 <span className="movement-label">{movement.label}</span>
                 <strong className={movement.direction}>
@@ -68,7 +63,7 @@ function AccountCard({
             ))}
           </ul>
         ) : (
-          <p className="account-empty">入出金履歴はありません。</p>
+          <p className="account-empty">No transactions yet.</p>
         )}
       </div>
     </section>
@@ -88,11 +83,11 @@ export default function Home() {
       const r = await apiFetch("/api/dashboard", {
         signal: AbortSignal.timeout(15000),
       });
-      if (!r.ok) throw new Error("残高を更新できませんでした。");
+      if (!r.ok) throw new Error("Unable to refresh balances.");
       setData(await r.json());
       setRefreshError("");
     } catch {
-      setRefreshError("残高を更新できませんでした。再接続を待っています。");
+      setRefreshError("Unable to refresh balances. Waiting to reconnect.");
     } finally {
       loading.current = false;
     }
@@ -118,7 +113,7 @@ export default function Home() {
       });
       if (!r.ok) {
         const result = await r.json();
-        throw new Error(result.error ?? "初期化できませんでした");
+        throw new Error(result.error ?? "Unable to initialize the demo");
       }
       await load();
     } catch (e) {
@@ -133,86 +128,49 @@ export default function Home() {
   return (
     <>
       <header>
-        <h1>口座</h1>
-        <p>預金口座と運用先の残高、入出金を確認できます。</p>
+        <h1>Accounts</h1>
+        <p>
+          View balances and transactions across your deposit and investment
+          accounts.
+        </p>
       </header>
       <div className="toolbar">
         <span className="badge">
-          {data.mode === "sepolia" ? "Sepolia接続デモ" : "ローカルデモ"}
-          {data.profile === "ten-usdc" ? " · 初回10 USDC" : ""}
+          {data.mode === "sepolia" ? "Sepolia demo" : "Local demo"}
+          {data.profile === "ten-usdc" ? " · 10 USDC starter" : ""}
         </span>
         <button onClick={() => void reset()} disabled={busy}>
           {busy
-            ? "初期化中…"
+            ? "Initializing…"
             : data.initialized
-              ? "デモをリセット"
-              : "デモを初期化"}
+              ? "Reset demo"
+              : "Initialize demo"}
         </button>
       </div>
       {error && <p role="alert">{error}</p>}
       {refreshError && <p role="status">{refreshError}</p>}
 
-      {data.investmentProgress && (
-        <section className="investment-progress" aria-label="運用の進行状況">
-          <ol>
-            {["預金口座", "トークン口座", "Aave"].map((label, index) => {
-              const progress = data.investmentProgress!;
-              const done = index < progress.completedStages;
-              const active = index === progress.completedStages;
-              return (
-                <li
-                  key={label}
-                  data-state={done ? "complete" : active ? "active" : "pending"}
-                  aria-current={active ? "step" : undefined}
-                >
-                  <b>{label}</b>
-                  <span>
-                    {done
-                      ? ["TD確保済み", "USDC受取済み", "預入完了"][index]
-                      : active
-                        ? progress.status === "needs_attention"
-                          ? "要確認"
-                          : [
-                              "TDを確保中",
-                              "USDC受取の確定待ち",
-                              "Aave預入の確定待ち",
-                            ][index]
-                        : "待機中"}
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-          <p role="status">
-            {data.investmentProgress.status === "needs_attention"
-              ? "処理が停止しました。実行記録を確認してください。"
-              : data.investmentProgress.completedStages === 3
-                ? "Aaveへの預入が完了しました。"
-                : "取引の確定に合わせて残高と入出金を更新しています。"}
-          </p>
-        </section>
-      )}
       <div className="account-list">
         <AccountCard
-          title="預金口座"
-          subtitle="口座A"
+          title="Deposit account"
+          subtitle="Account A"
           balance={yen(data.td ?? "0")}
           movements={forAccount("deposit")}
         />
         <AccountCard
-          title="トークン口座"
+          title="Token account"
           balance={`${formatUsdc(data.looseUsdc ?? "0")} USDC`}
           movements={forAccount("token")}
         />
         <AccountCard
           title="Aave"
-          subtitle={data.mode === "sepolia" ? "Base Sepolia" : "ローカルstub"}
+          subtitle={data.mode === "sepolia" ? "Base Sepolia" : "Local stub"}
           balance={`${formatUsdc(data.positionUsdc ?? "0")} USDC`}
           movements={forAccount("aave")}
         />
         <AccountCard
           title="Morpho"
-          subtitle="未接続"
+          subtitle="Not connected"
           balance="—"
           movements={[]}
         />

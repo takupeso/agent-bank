@@ -16,7 +16,7 @@ export const test = base.extend({
     const dashboard = await (await page.request.get("/api/dashboard")).json();
     if (BigInt(dashboard.locked ?? "0") > 0n) {
       const result = await page.request.post("/api/chat/messages", {
-        data: { text: "運用分を全部TDに戻して" },
+        data: { text: "Redeem all investments to TD" },
         headers: { Origin: origin },
       });
       expect(result.ok()).toBeTruthy();
@@ -27,20 +27,20 @@ export const test = base.extend({
 export { expect };
 export async function demoApprove(page: Page) {
   await page
-    .getByRole("region", { name: /World承認|メール閲覧の確認/ })
+    .getByRole("region", { name: /World approval|Email access confirmation/ })
     .waitFor();
-  const mail = page.getByRole("region", { name: "メール閲覧の確認" });
+  const mail = page.getByRole("region", { name: "Email access confirmation" });
   if (await mail.isVisible()) {
-    await mail.getByRole("button", { name: "この内容で許可して確認" }).click();
+    await mail.getByRole("button", { name: "Authorize and review" }).click();
     await expect(mail).not.toBeVisible();
     return;
   }
-  const panel = page.getByRole("region", { name: "World承認" });
+  const panel = page.getByRole("region", { name: "World approval" });
   await panel
-    .getByRole("button", { name: "デモとして続ける", exact: true })
+    .getByRole("button", { name: "Continue as demo", exact: true })
     .click();
   await panel
-    .getByRole("button", { name: "この内容をデモ承認", exact: true })
+    .getByRole("button", { name: "Approve these terms in demo", exact: true })
     .click();
   await expect(panel).not.toBeVisible();
 }
@@ -69,5 +69,7 @@ export async function openDemoActions(page: Page) {
     (element) => (element as HTMLDetailsElement).open,
   );
   if (!isOpen)
-    await page.getByText("デモ操作とよく使う依頼", { exact: true }).click();
+    await page
+      .getByText("Demo actions and common requests", { exact: true })
+      .click();
 }

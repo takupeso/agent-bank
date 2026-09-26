@@ -14,7 +14,7 @@ export function LogoutButton() {
   return (
     <div className="sidebar-logout">
       <button disabled={auth.busy} onClick={() => void auth.logout()}>
-        ログアウト
+        Log out
       </button>
       {auth.error && <p role="alert">{auth.error}</p>}
     </div>
@@ -40,7 +40,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       fetch("/api/world", { cache: "no-store" }),
     ]);
     if (!session.ok || !status.ok)
-      throw new Error("認証設定を取得できませんでした。");
+      throw new Error("Unable to load authentication settings.");
     setWorld(await status.json());
     setAuthenticated((await session.json()).authenticated);
     setReady(true);
@@ -55,7 +55,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       setAuthenticated(false);
       setChallenge(undefined);
       setOpen(false);
-      setError("セッションが切れました。もう一度ログインしてください。");
+      setError("Your session has expired. Please log in again.");
       void refresh().catch((e) => setError(String(e)));
     };
     window.addEventListener("agent-bank:session-expired", expired);
@@ -90,7 +90,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           purpose === "enroll" && world?.enrollTicketRequired !== false;
         if (needsTicket && !/^[a-f0-9]{64}$/.test(ticket.trim())) {
           setError(
-            "初回登録チケットの形式が違います。64文字の英数字（0-9・a-f）だけを貼り付けてください（末尾の%などは含めません）。",
+            "Invalid enrollment ticket. Paste exactly 64 hexadecimal characters (0-9, a-f), without trailing symbols such as %.",
           );
           return;
         }
@@ -131,17 +131,22 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   return (
     <main id="main" className="auth-screen">
       <section className="panel">
-        <h1>Agent Bankにログイン</h1>
-        <p>口座に紐づくWorld IDで、人間であることを確認してログインします。</p>
-        {!ready && <p>認証設定を確認中…</p>}
+        <h1>Log in to Agent Bank</h1>
+        <p>
+          Verify you are human using the World ID linked to your account to log
+          in.
+        </p>
+        {!ready && <p>Checking authentication settings…</p>}
         {world && (
           <>
             {!world.configured && (
-              <p>Worldが未設定です。通常モードではWorldの設定が必要です。</p>
+              <p>
+                World is not configured. Standard mode requires World setup.
+              </p>
             )}
             {!world.enrolled && world.enrollTicketRequired && (
               <label className="field">
-                初回登録チケット
+                Enrollment ticket
                 <input
                   type="password"
                   autoComplete="off"
@@ -160,14 +165,13 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
               }
               onClick={() => void login(false)}
             >
-              Worldで
               {world.enrolled || !world.enrollTicketRequired
-                ? "ログイン"
-                : "口座を登録"}
+                ? "Log in with World"
+                : "Register account with World"}
             </button>
             {world.authMode === "local-demo" && (
               <button disabled={busy} onClick={() => void login(true)}>
-                デモとして続ける
+                Continue as demo
               </button>
             )}
           </>
@@ -178,7 +182,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
               disabled={busy}
               onClick={() => void cancel().catch((e) => setError(String(e)))}
             >
-              World確認をキャンセル
+              Cancel World verification
             </button>
             <WorldWidget
               challenge={challenge}
@@ -188,11 +192,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 if (!value && !completed.current && !finishing.current) {
                   void cancel().catch((e) => setError(String(e)));
                   setError(
-                    "World確認を閉じました。再試行またはデモ継続を選んでください。",
+                    "World verification closed. Try again or continue as a demo.",
                   );
                 }
               }}
-              description="Agent Bankへのログイン"
+              description="Log in to Agent Bank"
               handleVerify={async (proof) => {
                 const attempt = challenge.attempt;
                 if (attempt !== generation.current) return;
@@ -219,7 +223,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                   at: report?.generated_at,
                 });
                 setError(
-                  `Worldで確認できませんでした（${code}）。再試行またはデモ継続を選んでください。`,
+                  `World verification failed (${code}). Try again or continue as a demo.`,
                 );
               }}
             />

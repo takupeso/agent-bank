@@ -18,7 +18,7 @@ export async function POST(req: Request) {
         {
           code: "OUTSTANDING_ASSETS",
           error:
-            "運用中の資金または未確定の取引があるため、リセットできません。チャットで「運用分を全部TDに戻して」を実行し、償還完了後にもう一度リセットしてください。実行記録が「要確認」の場合は、その処理の確認が必要です。",
+            "Cannot reset while funds are invested or transactions are pending. Send 'Redeem all investments to TD' in chat and wait for redemption before resetting. If an execution record says 'Needs review', check that operation first.",
         },
         { status: 409 },
       );
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
         {
           code: "OPERATION_IN_PROGRESS",
           error:
-            "処理中の取引があるため、リセットできません。処理の完了を待ってください。",
+            "Cannot reset while a transaction is processing. Wait for it to complete.",
         },
         { status: 409 },
       );

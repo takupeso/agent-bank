@@ -29,7 +29,7 @@ import { prepare, verify } from "../agents/service";
 import { message } from "../chat/service";
 import type { Investment } from "./service";
 import type { Run } from "../../shared/domain";
-export const redemptionRequest = "運用分を全部TDに戻して";
+export const redemptionRequest = "Redeem all investments to TD";
 type RedemptionRequest = {
   id: string;
   accountId: string;
@@ -231,7 +231,7 @@ export async function redeem(principal: Principal, messageId: string) {
       )
         throw new Error("Release evidence mismatch");
       run.steps.push({
-        label: "元の顧客口座へTDを解除",
+        label: "Release TD to the original customer account",
         mode: "anvil",
         hash,
         block: r.blockNumber.toString(),
@@ -254,7 +254,7 @@ export async function redeem(principal: Principal, messageId: string) {
     release(messageId);
     message(
       "assistant",
-      `運用分を償還し、¥${total.toLocaleString("ja-JP")}をTD預金へ戻しました。${mode() === "sepolia" ? "利息相当のAave持分は顧客ウォレットに残ります。" : ""}`,
+      `Investments redeemed. ¥${total.toLocaleString("en-US")} returned to your TD deposit.${mode() === "sepolia" ? "Aave holdings representing interest remain in your wallet." : ""}`,
       "execution",
       { run },
     );

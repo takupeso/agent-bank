@@ -546,10 +546,10 @@ function applyRule(
     kind: "rule",
     text:
       rule.id === "payment"
-        ? "自動支払いを設定しました。条件に合う請求書は期日に自動で支払います。"
+        ? "Automatic payments are set up. Eligible invoices will be paid on their due dates."
         : rule.enabled
-          ? "余力の自動運用を設定しました。承認条件を再確認して運用を開始します。"
-          : "余力の自動運用を停止しました。",
+          ? "Automatic investing is set up. I will verify the approved terms and start investing."
+          : "Automatic investing is paused.",
     data: { rule },
   });
   const delegation = applyDelegation(undefined, binding, rule);
@@ -587,6 +587,7 @@ export function assertRuleApproval(rule: Rule) {
     requireWorldEnrollment();
     if (c.sessionId !== binding()?.sessionId) throw new AuthorizationError(403);
   }
+  return p.target;
 }
 export function assertDelegationApproval(
   approvalId: string,

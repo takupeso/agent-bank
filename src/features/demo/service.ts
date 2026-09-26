@@ -175,7 +175,7 @@ export async function dashboard() {
       direction: "in",
       amount: "1000000",
       unit: "JPY",
-      label: "デモ初期残高",
+      label: "Initial demo balance",
     },
     ...payments.map((payment) => ({
       id: payment.id,
@@ -183,7 +183,7 @@ export async function dashboard() {
       direction: "out" as const,
       amount: payment.amountJpy,
       unit: "JPY" as const,
-      label: "請求書の支払い",
+      label: "Invoice payment",
     })),
     ...investments.flatMap((order) => [
       {
@@ -192,7 +192,7 @@ export async function dashboard() {
         direction: "out" as const,
         amount: order.amountJpy,
         unit: "JPY" as const,
-        label: "運用分のTDを確保",
+        label: "Reserve TD for investment",
       },
       ...(order.transferred
         ? [
@@ -202,7 +202,7 @@ export async function dashboard() {
               direction: "in" as const,
               amount: order.usdcUnits,
               unit: "USDC" as const,
-              label: "銀行からUSDC受取",
+              label: "Receive USDC from bank",
             },
           ]
         : []),
@@ -214,7 +214,7 @@ export async function dashboard() {
               direction: "out" as const,
               amount: order.usdcUnits,
               unit: "USDC" as const,
-              label: "Aaveへ預入",
+              label: "Deposit into Aave",
             },
             {
               id: order.id + ":aave-in",
@@ -222,7 +222,7 @@ export async function dashboard() {
               direction: "in" as const,
               amount: order.usdcUnits,
               unit: "USDC" as const,
-              label: "Aaveへ預入",
+              label: "Deposit into Aave",
             },
           ]
         : []),
@@ -234,7 +234,7 @@ export async function dashboard() {
               direction: "out" as const,
               amount: order.usdcUnits,
               unit: "USDC" as const,
-              label: "Aaveから引出し",
+              label: "Withdraw from Aave",
             },
             {
               id: order.id + ":token-withdraw",
@@ -242,7 +242,7 @@ export async function dashboard() {
               direction: "in" as const,
               amount: order.usdcUnits,
               unit: "USDC" as const,
-              label: "Aaveから引出し",
+              label: "Withdraw from Aave",
             },
             {
               id: order.id + ":token-out",
@@ -250,7 +250,7 @@ export async function dashboard() {
               direction: "out" as const,
               amount: order.usdcUnits,
               unit: "USDC" as const,
-              label: "銀行へUSDC返却",
+              label: "Return USDC to bank",
             },
             {
               id: order.id + ":deposit-in",
@@ -258,7 +258,7 @@ export async function dashboard() {
               direction: "in" as const,
               amount: order.amountJpy,
               unit: "JPY" as const,
-              label: "償還したTD",
+              label: "Redeemed TD",
             },
           ]
         : []),

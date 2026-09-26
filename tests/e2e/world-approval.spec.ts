@@ -6,18 +6,18 @@ unauthenticated(
   async ({ page }) => {
     await page.goto("/");
     await expect(
-      page.getByRole("heading", { name: "Agent Bankにログイン" }),
+      page.getByRole("heading", { name: "Log in to Agent Bank" }),
     ).toBeVisible();
     await expect(
-      page.getByRole("complementary", { name: "Agentチャット" }),
+      page.getByRole("complementary", { name: "Agent chat" }),
     ).toHaveCount(0);
     await page.screenshot({
       path: "/private/tmp/td-auth-login.png",
       fullPage: true,
     });
-    await page.getByRole("button", { name: "デモとして続ける" }).click();
+    await page.getByRole("button", { name: "Continue as demo" }).click();
     await expect(
-      page.getByRole("heading", { name: "口座", exact: true }),
+      page.getByRole("heading", { name: "Accounts", exact: true }),
     ).toBeVisible();
     expect(
       await page.evaluate(() => ({
@@ -30,9 +30,9 @@ unauthenticated(
       (c) => c.name === "bank_session",
     );
     expect(cookie?.httpOnly).toBe(true);
-    await page.getByRole("button", { name: "ログアウト" }).click();
+    await page.getByRole("button", { name: "Log out" }).click();
     await expect(
-      page.getByRole("heading", { name: "Agent Bankにログイン" }),
+      page.getByRole("heading", { name: "Log in to Agent Bank" }),
     ).toBeVisible();
   },
 );
@@ -41,50 +41,57 @@ test("World unavailable permits explicit scoped demo consent; OK alone changes n
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /デモを(初期化|リセット)/ }).click();
-  await expect(page.getByText("¥1,000,000", { exact: true })).toBeVisible();
+  const reset = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/demo/reset") &&
+      response.request().method() === "POST",
+  );
+  await page.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
+  expect((await reset).ok()).toBeTruthy();
+  await page.reload();
+  await expect(page.locator("main").getByText("¥1,000,000", { exact: true })).toBeVisible();
   await openDemoActions(page);
   await openDemoActions(page);
   await page
     .getByRole("button", {
-      name: "サンプルメールの閲覧を許可して確認",
+      name: "I allow access to my emails. Please check the invoices.",
       exact: true,
     })
     .click();
-  const mail = page.getByRole("region", { name: "メール閲覧の確認" });
-  const proposal = page.getByText("自動支払いの設定案");
+  const mail = page.getByRole("region", { name: "Email access confirmation" });
+  const proposal = page.getByText("Automatic payment proposal");
   await Promise.race([mail.waitFor(), proposal.waitFor()]);
   if (await mail.isVisible()) {
     await expect(
       mail.getByText(
-        /閲覧範囲：アオバデザインのサンプルメール・サクラオフィスのサンプルメール/,
+        /Email access: Aoba Design sample email, Sakura Office sample email/,
       ),
     ).toBeVisible();
-    await expect(mail.getByText(/対象Agent：bank-agent/)).toBeVisible();
-    await mail.getByRole("button", { name: "この内容で許可して確認" }).click();
+    await expect(mail.getByText(/Agent: bank-agent/)).toBeVisible();
+    await mail.getByRole("button", { name: "Authorize and review" }).click();
   }
   await expect(proposal).toBeVisible();
   await openDemoActions(page);
   await page
     .getByRole("button", {
-      name: "そうしてください（支払い設定）",
+      name: "Confirm payment setup",
       exact: true,
     })
     .click();
   expect(await (await page.request.get("/api/rules")).json()).toEqual([]);
-  const panel = page.getByRole("region", { name: "World承認" });
+  const panel = page.getByRole("region", { name: "World approval" });
   const begun = page.waitForResponse(
     (response) =>
       response.url().endsWith("/api/demo/approvals") &&
       response.request().postDataJSON().action === "begin",
   );
-  await panel.getByRole("button", { name: "デモとして続ける" }).click();
+  await panel.getByRole("button", { name: "Continue as demo" }).click();
   const cancelledChallenge = await (await begun).json();
   await expect(
-    panel.getByText("支払先：アオバデザイン・サクラオフィス"),
+    panel.getByText("Payees: Aoba Design, Sakura Office"),
   ).toBeVisible();
-  await expect(panel.getByText(/余力の自動運用/)).toBeVisible();
-  await panel.getByRole("button", { name: "キャンセル" }).click();
+  await expect(panel.getByText(/Automatic investing/)).toBeVisible();
+  await panel.getByRole("button", { name: "Cancel" }).click();
   const replay = await page.request.post("/api/demo/approvals", {
     data: { action: "confirm", id: cancelledChallenge.id },
   });
@@ -93,17 +100,17 @@ test("World unavailable permits explicit scoped demo consent; OK alone changes n
   await openDemoActions(page);
   await page
     .getByRole("button", {
-      name: "そうしてください（支払い設定）",
+      name: "Confirm payment setup",
       exact: true,
     })
     .click();
   await demoApprove(page);
-  await expect(page.getByText(/承認方法：デモ承認（World省略）/)).toHaveCount(
-    2,
-  );
+  await expect(
+    page.getByText(/Approval method: Demo approval \(without World\)/),
+  ).toHaveCount(2);
   await page.goto("/rules");
-  await page.getByRole("button", { name: "許可を取り消す" }).first().click();
-  await expect(page.getByText(/取消済み/)).toBeVisible();
+  await page.getByRole("button", { name: "Revoke permission" }).first().click();
+  await expect(page.getByText(/Revoked/)).toBeVisible();
   await page.screenshot({
     path: "/private/tmp/td-auth-permissions.png",
     fullPage: true,
@@ -116,18 +123,20 @@ test("session invalidation hides loaded banking data", async ({
 }) => {
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "口座", exact: true }),
+    page.getByRole("heading", { name: "Accounts", exact: true }),
   ).toBeVisible();
   await page.request.post("/api/auth/logout", {
     data: {},
     headers: { Origin: baseURL! },
   });
-  await page.getByRole("link", { name: "自動実行ルール", exact: true }).click();
+  await page
+    .getByRole("link", { name: "Automation rules", exact: true })
+    .click();
   await expect(
-    page.getByRole("heading", { name: "Agent Bankにログイン" }),
+    page.getByRole("heading", { name: "Log in to Agent Bank" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("complementary", { name: "Agentチャット" }),
+    page.getByRole("complementary", { name: "Agent chat" }),
   ).toHaveCount(0);
 });
 
@@ -149,14 +158,14 @@ unauthenticated(
     );
     await page.goto("/");
     await expect(
-      page.getByRole("heading", { name: "Agent Bankにログイン" }),
+      page.getByRole("heading", { name: "Log in to Agent Bank" }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "デモとして続ける" }),
+      page.getByRole("button", { name: "Continue as demo" }),
     ).toHaveCount(0);
     await expect(
       page.getByText(
-        "Worldが未設定です。通常モードではWorldの設定が必要です。",
+        "World is not configured. Standard mode requires World setup.",
       ),
     ).toBeVisible();
   },
@@ -166,8 +175,8 @@ test("World begin failure still offers explicit demo approval", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /デモを(初期化|リセット)/ }).click();
-  await expect(page.getByText("¥1,000,000", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
+  await expect(page.locator("main").getByText("¥1,000,000", { exact: true })).toBeVisible();
   await page.route("**/api/world", async (route) => {
     if (route.request().method() === "GET")
       await route.fulfill({
@@ -189,25 +198,27 @@ test("World begin failure still offers explicit demo approval", async ({
   await openDemoActions(page);
   await page
     .getByRole("button", {
-      name: "サンプルメールの閲覧を許可して確認",
+      name: "I allow access to my emails. Please check the invoices.",
       exact: true,
     })
     .click();
-  const mail = page.getByRole("region", { name: "メール閲覧の確認" });
-  await mail.getByRole("button", { name: "この内容で許可して確認" }).click();
-  await expect(page.getByText("自動支払いの設定案")).toBeVisible();
+  const mail = page.getByRole("region", { name: "Email access confirmation" });
+  await mail.getByRole("button", { name: "Authorize and review" }).click();
+  await expect(page.getByText("Automatic payment proposal")).toBeVisible();
   await openDemoActions(page);
-  await page
-    .getByRole("button", { name: "そうしてください（支払い設定）" })
-    .click();
-  const panel = page.getByRole("region", { name: "World承認" });
+  await page.getByRole("button", { name: "Confirm payment setup" }).click();
+  const panel = page.getByRole("region", { name: "World approval" });
   await expect(panel.getByRole("alert")).toBeVisible();
-  await panel.getByRole("button", { name: "デモとして続ける" }).click();
-  await expect(panel.getByText(/対象Agent：bank-agent/)).toBeVisible();
+  await panel.getByRole("button", { name: "Continue as demo" }).click();
+  await expect(panel.getByText(/Agent: bank-agent/)).toBeVisible();
   await page.screenshot({
     path: "/private/tmp/td-auth-approval.png",
     fullPage: true,
   });
-  await panel.getByRole("button", { name: "この内容をデモ承認" }).click();
-  await expect(page.getByText("承認時の設定", { exact: true })).toHaveCount(2);
+  await panel
+    .getByRole("button", { name: "Approve these terms in demo" })
+    .click();
+  await expect(
+    page.getByText("Approval", { exact: true }),
+  ).toHaveCount(2);
 });

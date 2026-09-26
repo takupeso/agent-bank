@@ -4,14 +4,14 @@ test("stopped payment rule applies to unexecuted invoice and can resume", async 
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /デモを(初期化|リセット)/ }).click();
-  await expect(page.getByText("¥1,000,000", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
+  await expect(page.locator("main").getByText("¥1,000,000", { exact: true })).toBeVisible();
   await page.goto("/chat");
   await openDemoActions(page);
   await openDemoActions(page);
   await page
     .getByRole("button", {
-      name: "サンプルメールの閲覧を許可して確認",
+      name: "I allow access to my emails. Please check the invoices.",
       exact: true,
     })
     .click();
@@ -19,22 +19,25 @@ test("stopped payment rule applies to unexecuted invoice and can resume", async 
   await openDemoActions(page);
   await page
     .getByRole("button", {
-      name: "そうしてください（支払い設定）",
+      name: "Confirm payment setup",
       exact: true,
     })
     .click();
   await demoApprove(page);
-  await expect(page.getByText("承認時の設定", { exact: true })).toHaveCount(2);
+  await expect(page.getByText("Approval", { exact: true })).toHaveCount(2);
   await page.goto("/rules");
-  await page.getByRole("button", { name: "停止する" }).first().click();
-  await expect(page.getByText("停止中 · 第2版")).toBeVisible();
+  await page.getByRole("tab", { name: "Deposit operations" }).click();
+  await page.getByRole("button", { name: "Pause" }).first().click();
+  await expect(page.getByText("Paused · Version 2")).toBeVisible();
   await page.goto("/chat");
   await openDemoActions(page);
   await openDemoActions(page);
-  await page.getByRole("button", { name: "デモ：支払期日を迎える" }).click();
+  await page
+    .getByRole("button", { name: "Demo: advance to payment due date" })
+    .click();
   await expect(
     page.getByRole("button", {
-      name: "デモ：支払期日を迎える",
+      name: "Demo: advance to payment due date",
       includeHidden: true,
     }),
   ).toBeEnabled();
@@ -42,14 +45,15 @@ test("stopped payment rule applies to unexecuted invoice and can resume", async 
     "600000",
   );
   await page.goto("/rules");
-  await page.getByRole("button", { name: "有効にする" }).first().click();
+  await page.getByRole("tab", { name: "Deposit operations" }).click();
+  await page.getByRole("button", { name: "Enable" }).first().click();
   await demoApprove(page);
-  await expect(page.getByText("有効 · 第3版")).toBeVisible();
+  await expect(page.getByText("Active · Version 3")).toBeVisible();
   await page.goto("/chat");
   await openDemoActions(page);
   await openDemoActions(page);
-  await page.getByRole("button", { name: "デモ：支払期日を迎える" }).click();
-  await expect(
-    page.getByText("アオバデザインへの¥200,000の支払いが完了しました。"),
-  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Demo: advance to payment due date" })
+    .click();
+  await expect(page.getByText("Paid ¥200,000 to Aoba Design.")).toBeVisible();
 });

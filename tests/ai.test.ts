@@ -9,11 +9,11 @@ const { extract, classifyRequest } = await import("../src/integrations/ai");
 const mail: Mail = {
   id: "aoba-mail",
   sender: "billing@aoba.example",
-  subject: "請求書",
-  body: "9月分の請求書です",
+  subject: "Invoice",
+  body: "Invoice for September",
   attachment: {
     number: "AOBA-202609-001",
-    issuer: "アオバデザイン",
+    issuer: "Aoba Design",
     recipientId: "aoba",
     amountJpy: "200000",
     dueAt: "2026-09-22T03:00:00.000Z",

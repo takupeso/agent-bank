@@ -32,7 +32,7 @@ test("account balances and confirmed history follow deposit, token, Aave without
                     direction: "out",
                     amount: "400000",
                     unit: "JPY",
-                    label: "運用分のTDを確保",
+                    label: "Reserve TD for investment",
                   },
                 ]
               : []),
@@ -44,7 +44,7 @@ test("account balances and confirmed history follow deposit, token, Aave without
                     direction: "in",
                     amount: "2500000000",
                     unit: "USDC",
-                    label: "銀行からUSDC受取",
+                    label: "Receive USDC from bank",
                   },
                 ]
               : []),
@@ -56,7 +56,7 @@ test("account balances and confirmed history follow deposit, token, Aave without
                     direction: "out",
                     amount: "2500000000",
                     unit: "USDC",
-                    label: "Aaveへ預入",
+                    label: "Deposit into Aave",
                   },
                   {
                     id: "supply",
@@ -64,7 +64,7 @@ test("account balances and confirmed history follow deposit, token, Aave without
                     direction: "in",
                     amount: "2500000000",
                     unit: "USDC",
-                    label: "Aaveへ預入",
+                    label: "Deposit into Aave",
                   },
                 ]
               : []),
@@ -81,32 +81,30 @@ test("account balances and confirmed history follow deposit, token, Aave without
       .filter({ has: page.getByRole("heading", { name, exact: true }) });
   const balance = (name: string) =>
     account(name).locator(".account-card-header strong");
-  await expect(balance("預金口座")).toHaveText("¥800,000");
-  await expect(page.getByText("TDを確保中", { exact: true })).toBeVisible();
+  await expect(balance("Deposit account")).toHaveText("¥800,000");
+  await expect(page.locator(".investment-progress")).toHaveCount(0);
   phase = 1;
-  await expect(balance("預金口座")).toHaveText("¥400,000");
-  await expect(account("預金口座").getByText("運用分のTDを確保")).toBeVisible();
-  await expect(balance("トークン口座")).toHaveText("0 USDC");
-  phase = 2;
-  await expect(balance("トークン口座")).toHaveText("2,500 USDC");
+  await expect(balance("Deposit account")).toHaveText("¥400,000");
   await expect(
-    account("トークン口座").getByText("銀行からUSDC受取"),
+    account("Deposit account").getByText("Reserve TD for investment"),
+  ).toBeVisible();
+  await expect(balance("Token account")).toHaveText("0 USDC");
+  phase = 2;
+  await expect(balance("Token account")).toHaveText("2,500 USDC");
+  await expect(
+    account("Token account").getByText("Receive USDC from bank"),
   ).toBeVisible();
   await expect(balance("Aave")).toHaveText("0 USDC");
-  await expect(
-    page.getByText("Aave預入の確定待ち", { exact: true }),
-  ).toBeVisible();
+
   await page.screenshot({
     path: "/private/tmp/td-investment-token-stage.png",
     fullPage: true,
   });
   phase = 3;
-  await expect(balance("トークン口座")).toHaveText("0 USDC");
+  await expect(balance("Token account")).toHaveText("0 USDC");
   await expect(balance("Aave")).toHaveText("2,500 USDC");
-  await expect(account("Aave").getByText("Aaveへ預入")).toBeVisible();
-  await expect(
-    page.getByText("Aaveへの預入が完了しました。", { exact: true }),
-  ).toBeVisible();
+  await expect(account("Aave").getByText("Deposit into Aave")).toBeVisible();
+
   await page.screenshot({
     path: "/private/tmp/td-investment-completed-stage.png",
     fullPage: true,

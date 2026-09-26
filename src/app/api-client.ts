@@ -15,8 +15,8 @@ export async function apiPost(path: string, body: object, timeoutMs = 30000) {
   if (!response.ok)
     throw new Error(
       response.status === 409
-        ? "条件が変更されたか、確認の期限が切れています。新しい確認を始めてください。"
-        : "操作を完了できませんでした。設定と現在の状態を確認してください。",
+        ? "The terms have changed or verification has expired. Start a new verification."
+        : "Unable to complete the operation. Check your settings and current status.",
     );
   return response.json();
 }

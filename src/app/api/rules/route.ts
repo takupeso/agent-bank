@@ -10,14 +10,16 @@ export async function GET(req: Request) {
     return Response.json(
       all<Rule>("rules").map((rule) => {
         let status = rule.enabled ? "active" : "stopped";
+        let investmentTarget = null;
         if (rule.enabled) {
           try {
-            assertRuleApproval(rule);
+            const target = assertRuleApproval(rule);
+            if (rule.id === "investment") investmentTarget = target.investment;
           } catch {
             status = "reapproval-required";
           }
         }
-        return { ...rule, status };
+        return { ...rule, status, investmentTarget };
       }),
     );
   } catch (e) {

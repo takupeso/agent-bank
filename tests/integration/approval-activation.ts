@@ -100,7 +100,7 @@ assert.equal(failed.activation.status, "failed");
 assert.ok(
   all<any>("messages")
     .at(-1)
-    .text.includes("運用条件は設定済みですが、運用開始に失敗しました"),
+    .text.includes("Investment terms are saved, but investing could not start"),
 );
 assert.equal(all("investment_orders").length, 1);
 assert.equal((await confirm(failedChallenge.id)).status, 409);

@@ -1,7 +1,7 @@
 [
   {
     "number": "AOBA-202609-001",
-    "issuer": "アオバデザイン",
+    "issuer": "Aoba Design",
     "amountJpy": "200000",
     "dueAt": "2026-09-22T03:00:00.000Z",
     "emailId": "aoba-mail",
@@ -9,7 +9,7 @@
   },
   {
     "number": "SAKURA-202609-001",
-    "issuer": "サクラオフィス",
+    "issuer": "Sakura Office",
     "amountJpy": "100000",
     "dueAt": "2026-09-28T03:00:00.000Z",
     "emailId": "sakura-mail",

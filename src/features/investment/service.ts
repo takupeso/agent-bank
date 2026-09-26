@@ -6,7 +6,6 @@ import {
 } from "../delegations/service";
 import { assertRuleApproval } from "../world/service";
 import "server-only";
-import { formatUsdc } from "../../shared/format";
 import { randomUUID } from "node:crypto";
 import { parseAbi, parseEventLogs } from "viem";
 import { get, put, instance, all } from "../../server/records";
@@ -217,7 +216,7 @@ export async function invest(
       put("investment_orders", order);
       recordOrder(order.id, order.usdcUnits, order.lockId);
       run.steps.push({
-        label: "TDを別段口座にlock",
+        label: "Lock TD in the reserve account",
         mode: "anvil",
         hash,
         block: r.blockNumber.toString(),
@@ -237,10 +236,10 @@ export async function invest(
     message(
       "assistant",
       prepared
-        ? `¥${BigInt(prepared.order.amountJpy).toLocaleString("ja-JP")}を別段口座にlockし、${formatUsdc(prepared.order.usdcUnits)}擬似USDC相当を${mode() === "sepolia" ? "SepoliaのAaveで運用しました" : "模擬運用しました"}。`
+        ? `Started investing ¥${BigInt(prepared.order.amountJpy).toLocaleString("en-US")} from your deposit account in Aave.${mode() === "sepolia" ? "" : " (Simulation)"}`
         : inactive
-          ? "自動運用が有効になっていないため、運用は実行していません。"
-          : "現在、新たに運用できる余力はありません。",
+          ? "No investment was made because automatic investing is disabled."
+          : "No additional funds are available to invest.",
       "execution",
       { run },
     );

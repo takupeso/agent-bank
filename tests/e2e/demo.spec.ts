@@ -5,14 +5,14 @@ test("replay complete demo twice and inspect all five screens", async ({
 }) => {
   for (let cycle = 0; cycle < 2; cycle++) {
     await page.goto("/");
-    await page.getByRole("button", { name: /デモを(初期化|リセット)/ }).click();
-    await expect(page.getByText("¥1,000,000", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
+    await expect(page.locator("main").getByText("¥1,000,000", { exact: true })).toBeVisible();
     await page.goto("/chat");
     await openDemoActions(page);
     await openDemoActions(page);
     await page
       .getByRole("button", {
-        name: "サンプルメールの閲覧を許可して確認",
+        name: "I allow access to my emails. Please check the invoices.",
         exact: true,
       })
       .click();
@@ -20,22 +20,20 @@ test("replay complete demo twice and inspect all five screens", async ({
     await openDemoActions(page);
     await page
       .getByRole("button", {
-        name: "そうしてください（支払い設定）",
+        name: "Confirm payment setup",
         exact: true,
       })
       .click();
     await demoApprove(page);
-    await expect(page.getByText("承認時の設定", { exact: true })).toHaveCount(
-      2,
-    );
+    await expect(page.getByText("Approval", { exact: true })).toHaveCount(2);
     await openDemoActions(page);
-    await page.getByRole("button", { name: "デモ：支払期日を迎える" }).click();
-    await expect(
-      page.getByText("アオバデザインへの¥200,000の支払いが完了しました。"),
-    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Demo: advance to payment due date" })
+      .click();
+    await expect(page.getByText("Paid ¥200,000 to Aoba Design.")).toBeVisible();
     await page.goto("/invoices");
-    await expect(page.getByText("支払済み", { exact: true })).toBeVisible();
-    await page.getByText("元メールを表示").first().click();
+    await expect(page.getByText("Paid", { exact: true })).toBeVisible();
+    await page.getByText("View source email").first().click();
     await page.screenshot({
       path: `/tmp/td-demo-invoices-${cycle}.png`,
       fullPage: true,
@@ -48,7 +46,11 @@ test("replay complete demo twice and inspect all five screens", async ({
       fullPage: true,
     });
     await page.goto("/rules");
-    await expect(page.getByLabel("1回の運用上限（円）")).toHaveValue("400000");
+    await page.getByRole("tab", { name: "Token operations" }).click();
+    await page.getByText("Edit settings", { exact: true }).click();
+    await expect(
+      page.getByLabel("Investment limit per transaction (JPY)"),
+    ).toHaveValue("400000");
     await page.screenshot({
       path: `/tmp/td-demo-rules-${cycle}.png`,
       fullPage: true,
@@ -57,10 +59,15 @@ test("replay complete demo twice and inspect all five screens", async ({
     await openDemoActions(page);
     await openDemoActions(page);
     await page
-      .getByRole("button", { name: "運用分を全部TDに戻して", exact: true })
+      .getByRole("button", {
+        name: "Redeem all investments to TD",
+        exact: true,
+      })
       .click();
     await expect(
-      page.getByText("運用分を償還し、¥400,000をTD預金へ戻しました。"),
+      page.getByText(
+        "Investments redeemed. ¥400,000 returned to your TD deposit.",
+      ),
     ).toBeVisible();
     const result = await (await page.request.get("/api/dashboard")).json();
     expect(result.td).toBe("800000");
@@ -68,16 +75,17 @@ test("replay complete demo twice and inspect all five screens", async ({
     expect(result.locked).toBe("0");
     expect(result.positionUsdc).toBe("0");
     expect(result.treasuryUsdc).toBe("10000000000");
-    await page.getByText("実行詳細", { exact: true }).last().click();
     await expect(
-      page.getByText("元の顧客口座へTDを解除 · Anvil確定"),
-    ).toBeVisible();
+      page.getByText("Execution details", { exact: true }),
+    ).toHaveCount(0);
     await page.screenshot({
       path: `/tmp/td-demo-chat-${cycle}.png`,
       fullPage: true,
     });
     await page.goto("/");
-    await expect(page.getByText("¥800,000", { exact: true })).toBeVisible();
+    await expect(
+      page.locator("main").getByText("¥800,000", { exact: true }),
+    ).toBeVisible();
     await page.screenshot({
       path: `/tmp/td-demo-home-${cycle}.png`,
       fullPage: true,

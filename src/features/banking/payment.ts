@@ -170,7 +170,7 @@ export async function payDue(principal: Principal, requestId: string) {
           hash: r.transactionHash,
         });
         run.steps.push({
-          label: "請求書のTD送金が確定",
+          label: "Invoice payment confirmed in TD",
           mode: "anvil",
           hash: r.transactionHash,
           block: r.blockNumber.toString(),
@@ -179,7 +179,7 @@ export async function payDue(principal: Principal, requestId: string) {
       })();
       message(
         "assistant",
-        `${invoice.issuer}への¥${BigInt(invoice.amountJpy).toLocaleString("ja-JP")}の支払いが完了しました。`,
+        `Paid ¥${BigInt(invoice.amountJpy).toLocaleString("en-US")} to ${invoice.issuer}.`,
         "execution",
         { run: { ...run, status: "completed" } },
       );

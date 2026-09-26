@@ -5,7 +5,7 @@ test("quick requests close tools and new chat content scrolls into view", async 
   const messages = Array.from({ length: 30 }, (_, index) => ({
     id: String(index),
     role: "assistant",
-    text: `以前の会話 ${index}。口座の処理について確認しています。`,
+    text: `Previous message ${index}.Checking account operations.`,
   }));
   await page.route("**/api/**", (route) => {
     const path = new URL(route.request().url()).pathname;
@@ -22,7 +22,7 @@ test("quick requests close tools and new chat content scrolls into view", async 
         messages.push({
           id: "new",
           role: "assistant",
-          text: "今回の運用案を作成しました。",
+          text: "I have prepared an investment proposal.",
         });
       return route.fulfill({ json: messages });
     }
@@ -34,20 +34,22 @@ test("quick requests close tools and new chat content scrolls into view", async 
   await page.goto("/");
   const conversation = page.locator(".agent-conversation");
   await expect(
-    page.getByText("以前の会話 29。口座の処理について確認しています。", {
+    page.getByText("Previous message 29.Checking account operations.", {
       exact: true,
     }),
   ).toBeInViewport();
   await conversation.evaluate((element) => {
     element.scrollTop = 0;
   });
-  await page.getByText("デモ操作とよく使う依頼", { exact: true }).click();
   await page
-    .getByRole("button", { name: "余力を運用したい", exact: true })
+    .getByText("Demo actions and common requests", { exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Invest my available funds", exact: true })
     .click();
   await expect(page.locator("details.agent-tools")).not.toHaveAttribute("open");
   await expect(
-    page.getByText("今回の運用案を作成しました。", { exact: true }),
+    page.getByText("I have prepared an investment proposal.", { exact: true }),
   ).toBeInViewport();
   await expect
     .poll(() =>
@@ -57,12 +59,17 @@ test("quick requests close tools and new chat content scrolls into view", async 
       ),
     )
     .toBeLessThan(5);
-  await page.getByText("デモ操作とよく使う依頼", { exact: true }).click();
   await page
-    .getByRole("button", { name: "デモ：支払期日を迎える", exact: true })
+    .getByText("Demo actions and common requests", { exact: true })
+    .click();
+  await page
+    .getByRole("button", {
+      name: "Demo: advance to payment due date",
+      exact: true,
+    })
     .click();
   await expect(page.locator("details.agent-tools")).not.toHaveAttribute("open");
   await expect(page.locator(".agent-error")).toContainText(
-    "処理を完了できませんでした",
+    "Unable to complete the operation",
   );
 });

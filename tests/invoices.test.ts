@@ -7,19 +7,17 @@ process.env.DEMO_DB = mkdtempSync(tmpdir() + "/td-invoices-") + "/test.sqlite";
 process.env.BANK_AUTH_MODE = "local-demo";
 process.env.BANK_BIND_HOST = "127.0.0.1";
 const { sqlite } = await import("../src/server/db");
-sqlite
-  .prepare("INSERT INTO demo_instances(id,state,status) VALUES(?,?,?)")
-  .run(
-    "test",
-    JSON.stringify({
-      id: "test",
-      token: "0x0000000000000000000000000000000000000001",
-      vault: "0x0000000000000000000000000000000000000002",
-      customer: "0x0000000000000000000000000000000000000003",
-      recipient: "0x0000000000000000000000000000000000000004",
-    }),
-    "ready",
-  );
+sqlite.prepare("INSERT INTO demo_instances(id,state,status) VALUES(?,?,?)").run(
+  "test",
+  JSON.stringify({
+    id: "test",
+    token: "0x0000000000000000000000000000000000000001",
+    vault: "0x0000000000000000000000000000000000000002",
+    customer: "0x0000000000000000000000000000000000000003",
+    recipient: "0x0000000000000000000000000000000000000004",
+  }),
+  "ready",
+);
 sqlite.prepare("UPDATE control SET active_instance=?").run("test");
 const { put } = await import("../src/server/records");
 const { listInvoices } = await import("../src/features/invoices/service");
@@ -89,7 +87,11 @@ test("payment consent schedules both explicitly proposed invoice recipients", as
       ["sakura", "100000", "100000"],
     ],
   );
-  put("messages", { id: "consent", role: "user", text: "そうしてください" });
+  put("messages", {
+    id: "consent",
+    role: "user",
+    text: "Confirm these settings",
+  });
   await approve({ purpose: "proposal", proposalId: proposal.id });
   assert.deepEqual(
     listInvoices().invoices.map((invoice) => invoice.id),

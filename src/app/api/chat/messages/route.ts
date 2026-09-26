@@ -7,7 +7,8 @@ function chatFailure(e: unknown) {
   if (e instanceof Error && e.message === "Initialize demo first") {
     return Response.json(
       {
-        error: "デモ口座が未初期化です。ホームでデモを初期化してください。",
+        error:
+          "The demo account is not initialized. Initialize the demo on the Home page.",
         code: "DEMO_NOT_INITIALIZED",
       },
       { status: 409 },
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
     ) {
       console.error(e.message);
       return Response.json(
-        { error: `AIの処理を完了できませんでした: ${e.message}` },
+        { error: `Unable to complete the AI request: ${e.message}` },
         { status: 502 },
       );
     }

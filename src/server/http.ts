@@ -105,7 +105,7 @@ export function failure(e: unknown) {
   return Response.json(
     {
       error:
-        "処理を完了できませんでした。認証・権限・実行記録を確認してください。",
+        "Unable to complete the operation. Check authentication, permissions, and execution records.",
     },
     {
       status: e instanceof AuthorizationError ? e.status : 400,
