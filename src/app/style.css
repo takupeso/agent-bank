@@ -1584,274 +1584,159 @@ header p {
   visibility: hidden;
 }
 
-/* Money flow */
-.money-flow {
-  margin-bottom: 14px;
-  padding: 20px 22px 16px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+/* Money flow toast */
+.flow-toast {
+  position: fixed;
+  bottom: 24px;
+  right: calc(460px + 24px);
+  z-index: 20;
+  width: min(360px, calc(100vw - 32px));
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #0b1020eb;
+  color: white;
+  box-shadow: 0 18px 40px #0f172a4d;
+  backdrop-filter: blur(8px);
+  animation: toast-in 0.25s ease-out;
 }
-.money-flow-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 18px;
+.flow-toast.leaving {
+  animation: toast-out 0.4s ease-in 1.8s forwards;
 }
-.money-flow-header h2 {
-  margin: 0;
-  font-size: 15px;
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
 }
-.money-flow-header button {
-  min-height: 32px;
-  padding: 6px 12px;
-  font-size: 12px;
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(12px);
+  }
 }
-.flow-track {
+.flow-route {
   display: grid;
-  grid-template-columns:
-    minmax(0, 1fr) minmax(28px, 0.4fr) minmax(0, 1fr) minmax(28px, 0.4fr)
-    minmax(0, 1fr) minmax(28px, 0.4fr) minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-}
-.flow-node {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-  padding: 12px 12px 10px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface-2);
-  text-align: center;
-}
-.flow-node-title {
+  gap: 10px;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--muted);
 }
-.flow-node-value {
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.flow-route > span {
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: #ffffff1a;
 }
-.flow-node-note {
-  font-size: 10px;
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.flow-node.deposit {
-  border-color: #c7cdf8;
-  background: var(--accent-soft);
-}
-.flow-node.deposit .flow-node-value {
-  color: var(--accent-ink);
-}
-.flow-node.receiving {
-  animation: node-receive 1.4s ease-out;
+.flow-route > span:last-child {
+  animation: node-receive 1.6s ease-out;
 }
 @keyframes node-receive {
   0%,
-  45% {
-    box-shadow: 0 0 0 0 #4f46e500;
-    transform: scale(1);
+  60% {
+    background: #ffffff1a;
   }
-  65% {
-    box-shadow: 0 0 0 6px #4f46e533;
-    border-color: var(--accent);
-    transform: scale(1.04);
+  75% {
+    background: #818cf8;
   }
   100% {
-    box-shadow: 0 0 0 0 #4f46e500;
-    transform: scale(1);
+    background: #ffffff1a;
+  }
+}
+.flow-toast.pay .flow-route > span:last-child {
+  animation-name: node-receive-pay;
+}
+@keyframes node-receive-pay {
+  0%,
+  60% {
+    background: #ffffff1a;
+  }
+  75% {
+    background: #10b981;
+  }
+  100% {
+    background: #ffffff1a;
   }
 }
 .flow-line {
   position: relative;
-  z-index: 2;
-  height: 28px;
+  height: 14px;
 }
 .flow-line i {
   position: absolute;
-  inset: 13px 4px auto;
+  inset: 6px 0 auto;
   height: 2px;
-  border-radius: 2px;
   background: repeating-linear-gradient(
     90deg,
-    var(--line-strong) 0 6px,
-    transparent 6px 10px
+    #ffffff4d 0 5px,
+    transparent 5px 9px
   );
-}
-.flow-line.active i {
-  background: repeating-linear-gradient(
-    90deg,
-    #a5b4fc 0 6px,
-    transparent 6px 10px
-  );
-  background-size: 20px 2px;
+  background-size: 18px 2px;
   animation: dash 0.5s linear infinite;
 }
 @keyframes dash {
   to {
-    background-position: 20px 0;
+    background-position: 18px 0;
   }
 }
 .flow-coin {
   position: absolute;
   top: 50%;
   left: 0;
-  z-index: 1;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: var(--gradient);
-  color: white;
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
-  box-shadow: 0 4px 12px #4f46e566;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #e0e7ff, #818cf8 60%, #6366f1);
+  box-shadow: 0 0 12px #818cf8;
   transform: translate(-50%, -50%);
-  animation: coin-move 1.3s cubic-bezier(0.45, 0, 0.2, 1) forwards;
+  animation: coin-move 1.2s cubic-bezier(0.45, 0, 0.2, 1) forwards;
 }
-.flow-coin.reverse {
-  animation-name: coin-move-reverse;
-}
-.flow-line.pay .flow-coin {
-  background: linear-gradient(135deg, #059669, #10b981);
-  box-shadow: 0 4px 12px #05966966;
+.flow-toast.pay .flow-coin {
+  background: radial-gradient(circle at 35% 35%, #d1fae5, #34d399 60%, #059669);
+  box-shadow: 0 0 12px #34d399;
 }
 @keyframes coin-move {
-  0% {
+  from {
     left: 0;
-    opacity: 0;
   }
-  15% {
-    opacity: 1;
-  }
-  85% {
-    opacity: 1;
-  }
-  100% {
+  to {
     left: 100%;
-    opacity: 0;
   }
 }
-@keyframes coin-move-reverse {
-  0% {
-    left: 100%;
-    opacity: 0;
-  }
-  15% {
-    opacity: 1;
-  }
-  85% {
-    opacity: 1;
-  }
-  100% {
-    left: 0;
-    opacity: 0;
-  }
-}
-.flow-status {
+.flow-toast p {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 16px 0 0;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
+  flex-direction: column;
+  margin: 10px 0 0;
   font-size: 12px;
-  color: var(--ink-2);
+  line-height: 1.5;
+  color: #cbd5e1;
 }
-.agent-status.busy {
-  background: var(--accent);
-  box-shadow: 0 0 0 3px #4f46e533;
-  animation: pulse 1s ease-in-out infinite;
+.flow-toast strong {
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: white;
+  font-variant-numeric: tabular-nums;
 }
-@keyframes pulse {
-  50% {
-    box-shadow: 0 0 0 6px #4f46e500;
+@media (max-width: 1240px) {
+  .flow-toast {
+    right: calc(400px + 24px);
   }
 }
-@container main (max-width: 640px) {
-  .flow-track {
-    grid-template-columns: 1fr;
-    justify-items: stretch;
-  }
-  .flow-line {
-    height: 34px;
-  }
-  .flow-line i {
-    inset: 4px auto 4px 50%;
-    width: 2px;
-    height: auto;
-    background: repeating-linear-gradient(
-      180deg,
-      var(--line-strong) 0 6px,
-      transparent 6px 10px
-    );
-  }
-  .flow-line.active i {
-    background: repeating-linear-gradient(
-      180deg,
-      #a5b4fc 0 6px,
-      transparent 6px 10px
-    );
-  }
-  .flow-coin,
-  .flow-coin.reverse {
-    left: 50%;
-    animation-name: coin-move-y;
-  }
-  .flow-coin.reverse {
-    animation-name: coin-move-y-reverse;
-  }
-  @keyframes coin-move-y {
-    0% {
-      top: 0;
-      opacity: 0;
-    }
-    20%,
-    80% {
-      opacity: 1;
-    }
-    100% {
-      top: 100%;
-      opacity: 0;
-    }
-  }
-  @keyframes coin-move-y-reverse {
-    0% {
-      top: 100%;
-      opacity: 0;
-    }
-    20%,
-    80% {
-      opacity: 1;
-    }
-    100% {
-      top: 0;
-      opacity: 0;
-    }
+@media (max-width: 1030px) {
+  .flow-toast {
+    right: 16px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .flow-toast,
+  .flow-toast.leaving,
+  .flow-line i,
   .flow-coin,
-  .flow-coin.reverse {
-    left: 50%;
-    top: 50%;
+  .flow-route > span:last-child {
     animation: none;
   }
-  .flow-line.active i,
-  .flow-node.receiving,
-  .agent-status.busy {
-    animation: none;
+  .flow-coin {
+    left: 100%;
   }
 }

@@ -121,6 +121,7 @@ export default function Home() {
         const result = await r.json();
         throw new Error(result.error ?? "Unable to initialize the demo");
       }
+      window.dispatchEvent(new Event("agent-bank:demo-reset"));
       await load();
     } catch (e) {
       setError(String(e));
@@ -171,15 +172,7 @@ export default function Home() {
         </p>
       )}
 
-      {data.initialized && (
-        <MoneyFlow
-          movements={movements}
-          td={data.td ?? "0"}
-          walletUsdc={data.looseUsdc ?? "0"}
-          aaveUsdc={data.positionUsdc ?? "0"}
-          simulated={data.mode !== "sepolia"}
-        />
-      )}
+      <MoneyFlow movements={movements} />
 
       <div className="account-list">
         <AccountCard

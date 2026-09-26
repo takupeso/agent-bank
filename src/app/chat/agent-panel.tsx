@@ -47,10 +47,14 @@ export function AgentPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
-    apiFetch("/api/chat/messages").then(async (r) => {
-      if (r.ok) setMessages(await r.json());
-      setLoaded(true);
-    });
+    const load = () =>
+      apiFetch("/api/chat/messages").then(async (r) => {
+        if (r.ok) setMessages(await r.json());
+        setLoaded(true);
+      });
+    void load();
+    window.addEventListener("agent-bank:demo-reset", load);
+    return () => window.removeEventListener("agent-bank:demo-reset", load);
   }, []);
   useLayoutEffect(() => {
     const frame = requestAnimationFrame(() => {
