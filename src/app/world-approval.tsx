@@ -203,13 +203,11 @@ export function WorldApproval({
   return (
     <section className="panel approval-policy" aria-label="World approval">
       <h2>Approve these terms</h2>
-      <p>
-        Nothing changes until you approve. The bank checks every action against
-        these terms.
-      </p>
       {policy && (
         <div className="approval-summary">
-          <p className="approval-meta">Agent: {policy.agentId}</p>
+          <p className="approval-meta">
+            {policy.agentId} can act only within these terms.
+          </p>
           {conditions && "mailIds" in conditions && (
             <section className="approval-section">
               <h3>Email access</h3>
@@ -222,19 +220,15 @@ export function WorldApproval({
           )}
           {c?.id === "payment" && (
             <section className="approval-section">
-              <h3>Payees and payment limits</h3>
-              <p className="approval-line">
-                {c.enabled ? "" : "Pause automatic payments. "}Payees:{" "}
-                {recipients.map((r) => recipientName(r.recipientId)).join(", ")}{" "}
-                · paid on the due date
-              </p>
+              <h3>{c.enabled ? "Payments on due dates" : "Pause payments"}</h3>
               <ul className="approval-limits">
                 {recipients.map((r) => (
                   <li key={r.recipientId}>
                     <span>{recipientName(r.recipientId)}</span>
                     <b>
-                      {yen(r.maxPaymentJpy)} / payment ·{" "}
-                      {yen(r.monthlyLimitJpy)} / month
+                      {r.maxPaymentJpy === r.monthlyLimitJpy
+                        ? `${yen(r.monthlyLimitJpy)} / month`
+                        : `${yen(r.maxPaymentJpy)} each · ${yen(r.monthlyLimitJpy)} / month`}
                     </b>
                   </li>
                 ))}
@@ -243,36 +237,27 @@ export function WorldApproval({
           )}
           {investmentRule && (
             <section className="approval-section">
-              <h3>Investment destination and limit</h3>
-              <p className="approval-line">
+              <h3>
                 {investmentRule.enabled
-                  ? "Automatic investing"
-                  : "Pause automatic investing"}{" "}
-                into{" "}
+                  ? "Investing in "
+                  : "Pause investing in "}
                 {policy.target.investment.mode === "stub"
                   ? "Aave (simulation)"
                   : policy.target.investment.protocol}
+              </h3>
+              <p className="approval-line">
+                Up to {yen(investmentRule.maxInvestmentJpy)} each · keeps{" "}
+                {yen(investmentRule.safetyBufferJpy)} in deposit
               </p>
-              <ul className="approval-limits">
-                <li>
-                  <span>Per investment</span>
-                  <b>up to {yen(investmentRule.maxInvestmentJpy)}</b>
-                </li>
-                <li>
-                  <span>Always kept in deposit</span>
-                  <b>{yen(investmentRule.safetyBufferJpy)} safety buffer</b>
-                </li>
-              </ul>
-              {investmentRule.enabled && (
-                <p className="approval-caption">
-                  Investing starts right after approval.
-                </p>
-              )}
             </section>
           )}
-          {policy.scopes.includes("redemption") && (
+          {(investmentRule?.enabled ||
+            policy.scopes.includes("redemption")) && (
             <p className="approval-caption">
-              Redemptions happen only when you ask.
+              {investmentRule?.enabled &&
+                "Investing starts right after approval. "}
+              {policy.scopes.includes("redemption") &&
+                "Redemptions only when you ask."}
             </p>
           )}
           <details className="approval-technical">

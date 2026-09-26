@@ -11,7 +11,11 @@ import {
   AuthorizationError,
   type Principal,
 } from "../../server/auth";
-import { beginWorldCheck, verifiedWorldCheck } from "../world-agents/service";
+import {
+  beginWorldCheck,
+  consumeWorldCheck,
+  verifiedWorldCheck,
+} from "../world-agents/service";
 import { worldAgentsConfig } from "../../integrations/world-agents";
 import { balance } from "../../integrations/td-ledger";
 
@@ -123,9 +127,9 @@ export function completeAgentConnection(
   requirePrincipal(p, "human");
   return sqlite.transaction(() => {
     const request = connectionRequest(browser);
+    if (!request) throw new AuthorizationError(403);
     const proof = verifiedWorldCheck(browser);
     if (
-      !request ||
       request.requestId !== proof.requestId ||
       request.expiresAt <= Date.now() ||
       request.accountId !== p.accountId ||
@@ -289,6 +293,7 @@ export function grantBalance(
         hashSecret(proof.requestId),
         JSON.stringify(grant),
       );
+    consumeWorldCheck(browser);
     return {
       token,
       grantId: grant.id,

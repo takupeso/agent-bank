@@ -12,6 +12,7 @@ type Status = {
     | "pending"
     | "verifying"
     | "verified"
+    | "used"
     | "cancelled"
     | "expired"
     | "failed";

@@ -31,10 +31,10 @@ test("chat consent persists a versioned rule then change and stop", async ({
     .getByRole("button", { name: "Continue as demo", exact: true })
     .click();
   await expect(
-    approval.getByRole("heading", { name: "Payees and payment limits" }),
+    approval.getByRole("heading", { name: "Payments on due dates" }),
   ).toBeVisible();
   await expect(
-    approval.getByRole("heading", { name: "Investment destination and limit" }),
+    approval.getByRole("heading", { name: "Investing in Aave (simulation)" }),
   ).toBeVisible();
   await expect(approval).toContainText("Harp Branch");
   await page.screenshot({

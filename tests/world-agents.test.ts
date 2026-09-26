@@ -306,6 +306,11 @@ test("authorized external agent can read the account balance", async () => {
     scope: "balance:read",
     environment: "demo",
   });
+  assert.equal(service.worldCheckStatus(owner).status, "used");
+  assert.throws(() => external.grantBalance(p, owner, "Second AI"));
+  await begin();
+  overrides = { sub: "different-human" };
+  await assert.rejects(service.completeWorldCheck(owner, callback()));
 });
 
 test("external agent without permission cannot read the account balance", async () => {

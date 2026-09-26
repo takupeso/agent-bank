@@ -92,6 +92,16 @@ node scripts/agent-redeem.mjs /path/to/agent-bank-connection.json --status
 
 公開デモはAaveのstub＋ローカルAnvilです。Sepolia接続では既存adapterを使いますが、実Aaveでの外部Agent実行は未検証です。元本を戻す既存仕様を引き継ぎ、利息相当のAave保有分はSepolia側に残ります。
 
+### MCPサーバー
+
+Claude Code・Claude DesktopなどのMCPクライアントからは、同じ接続ファイルを使うstdioサーバーを登録します。ツールは`get_balance`・`redeem_approved_investments`・`get_redemption_status`の3つで、上記の外部Agent APIだけを呼びます。引数は受け付けず、権限の付与・拡大や金額・送金先の指定はできません。
+
+```sh
+claude mcp add agent-bank -- node /absolute/path/to/agent-bank/scripts/agent-bank-mcp.mjs /absolute/path/to/agent-bank-connection.json
+```
+
+Claude Desktopでは設定ファイルの`mcpServers`へ同じコマンドを`command`・`args`として追加します。接続ファイルはツール呼出しごとに読み込むため、再発行した接続ファイルで同じパスを上書きすれば再登録は不要です。credentialは会話やツール結果へ出力しません。
+
 ## ローカルでのデザイン確認
 
 開発サーバーの `/world-agents?preview=1` で、接続内容の確認・模擬認証・ファイルダウンロードを確認できます。`Complete preview verification` で成功経路、`Cancel verification` で取消経路へ進みます。開発環境のloopback接続でのみ有効で、銀行APIを呼び出さず、接続ファイルにも無効な確認用tokenを使います。通常URLやproduction buildでは認証を省略しません。

@@ -150,13 +150,6 @@ export default function Home() {
       </header>
       {refreshError && <p role="status">{refreshError}</p>}
 
-      {!data.initialized && (
-        <p className="empty-hint">
-          Open demo controls (bottom right) and choose Initialize demo to fund
-          Account A.
-        </p>
-      )}
-
       <div className="account-list">
         <AccountCard
           title="Deposit account"
