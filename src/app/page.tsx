@@ -65,7 +65,7 @@ function AccountCard({
                   className={`movement-direction ${movement.direction}`}
                   aria-label={movement.direction === "in" ? "Credit" : "Debit"}
                 >
-                  {movement.direction === "in" ? "↓" : "↑"}
+                  {movement.direction === "in" ? "↑" : "↓"}
                 </span>
                 <span className="movement-label">{movement.label}</span>
                 <strong className={movement.direction}>
