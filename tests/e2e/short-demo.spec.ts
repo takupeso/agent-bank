@@ -43,8 +43,9 @@ for (const width of [1440, 390]) {
       path: `/tmp/agent-bank-short-proposal-${width}.png`,
       fullPage: true,
     });
-    await open();
-    await drawer.getByRole("button", { name: "Chat", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Next step: Approve the plan", exact: true })
+      .click();
     await expect(
       page.getByText(
         /Payments are scheduled. Started investing your full deposit/,

@@ -340,16 +340,6 @@ export function AgentPanel() {
         }
         onRedeem={() => void send("Redeem all investments to TD")}
         chatBusy={busy || !!approval || !!mailPermission}
-        onChat={() => {
-          const plan = messages.filter((m) => m.kind === "payment-plan").at(-1);
-          if (!plan)
-            void send(
-              "I grant access to my card payment information and invoices.",
-            );
-          else if ((plan.data?.proposal as Proposal)?.status === "proposed")
-            void send("Yes");
-          else document.getElementById("chat-input")?.focus();
-        }}
       />
       <form
         className="agent-composer"

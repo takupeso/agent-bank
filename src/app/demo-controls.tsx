@@ -8,12 +8,10 @@ type Clock = {
   recent?: { status: string };
 };
 export function DemoControls({
-  onChat,
   onGrantAccess,
   onRedeem,
   chatBusy,
 }: {
-  onChat: () => void;
   onGrantAccess: () => void;
   onRedeem: () => void;
   chatBusy: boolean;
@@ -133,15 +131,6 @@ export function DemoControls({
                 : next
                   ? `Change date · ${new Date(next.date + "T12:00:00+09:00").toLocaleDateString("en-US", { timeZone: "Asia/Tokyo", month: "short", day: "numeric" })}`
                   : "Change date"}
-            </button>
-            <button
-              disabled={busy || chatBusy}
-              onClick={() => {
-                dialog.current?.close();
-                onChat();
-              }}
-            >
-              Chat
             </button>
             <button
               disabled={busy || chatBusy}
