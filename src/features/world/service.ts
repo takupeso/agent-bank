@@ -528,6 +528,7 @@ function applyRule(
   const rule: Rule = {
     ...normalized,
     version: baseVersion + 1,
+    approvedDemoDate: instance().clock,
     consentId: c.id,
     worldApprovalId: c.id,
     authorization: binding,

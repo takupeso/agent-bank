@@ -86,7 +86,7 @@ export async function reset(principal: Principal) {
     if (!result.events.length) throw new Error("Missing mint evidence");
     const state = {
       id,
-      clock: "2026-09-29T00:00:00.000Z",
+      clock: "2026-09-27T00:00:00.000Z",
       token,
       vault,
       customer,

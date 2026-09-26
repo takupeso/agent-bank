@@ -66,7 +66,9 @@ test("ten USDC profile proposes and redeems exactly 1600 TD locally", async ({
   expect(invested.locked).toBe("1600");
   expect(invested.positionUsdc).toBe("10000000");
   await page.goto("/investment");
-  await expect(page.getByText("10 USDC", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Investment schedule" }),
+  ).toContainText("Invest ¥1,600 in Aave.");
   await post("/api/chat/messages", { text: "Redeem all investments to TD" });
   const after = await (await page.request.get("/api/dashboard")).json();
   expect(after.td).toBe("800000");
