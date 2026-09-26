@@ -4,6 +4,17 @@
   "main": "deploy/cloudflare/worker.ts",
   "compatibility_date": "2026-09-26",
   "observability": { "enabled": true },
+  // Forwarded to each sandbox. Set GEMINI_API_KEY / WORLD_RP_SIGNING_KEY with
+  // `wrangler secret put`, never here.
+  "vars": {
+    "AI_MODE": "stub",
+    "GEMINI_MODEL": "gemini-3.5-flash-lite",
+    "WORLD_MODE": "disabled",
+    "WORLD_APP_ID": "",
+    "WORLD_RP_ID": "",
+    "WORLD_ENVIRONMENT": "production",
+    "WORLD_FLOW": "request"
+  },
   "containers": [
     {
       "class_name": "BankSandbox",

@@ -1,21 +1,44 @@
 import { Container, getContainer } from "@cloudflare/containers";
 
+// Settings forwarded to each sandbox. Plain values live in wrangler.jsonc
+// `vars`; keys are set with `wrangler secret put`. BANK_AUTH_MODE and asset
+// settings are fixed by the image (local-demo, stub) and never forwarded.
+const forwarded = [
+  "AI_MODE",
+  "GEMINI_API_KEY",
+  "GEMINI_MODEL",
+  "WORLD_MODE",
+  "WORLD_APP_ID",
+  "WORLD_RP_ID",
+  "WORLD_RP_SIGNING_KEY",
+  "WORLD_ENVIRONMENT",
+  "WORLD_FLOW",
+] as const;
+type Env = Partial<Record<(typeof forwarded)[number], string>> & {
+  BANK_SANDBOX: DurableObjectNamespace<BankSandbox>;
+};
+
 // One disposable sandbox per visitor; state disappears when it sleeps.
-export class BankSandbox extends Container {
+export class BankSandbox extends Container<Env> {
   defaultPort = 8080;
   sleepAfter = "30m";
-  enableInternet = false;
 
   override async fetch(request: Request) {
+    const envVars = Object.fromEntries(
+      forwarded.flatMap((k) => (this.env[k] ? [[k, this.env[k]]] : [])),
+    );
+    // Outbound access only when an external integration is switched on.
+    const enableInternet =
+      envVars.AI_MODE === "gemini" || envVars.WORLD_MODE === "live";
     // Anvil, migration and `next start` take longer than the default 20s wait.
     await this.startAndWaitForPorts({
+      startOptions: { envVars, enableInternet },
       cancellationOptions: { portReadyTimeoutMS: 120_000 },
     });
     return this.containerFetch(request);
   }
 }
 
-type Env = { BANK_SANDBOX: DurableObjectNamespace<BankSandbox> };
 const cookieName = "demo_sandbox";
 
 export default {

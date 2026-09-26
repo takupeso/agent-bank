@@ -83,7 +83,7 @@ pnpm cf:deploy
 Docker（Rancher Desktop等）とWorkers Paidプランが必要です。`/new-sandbox`を開くと新しいサンドボックスに切り替わります。
 
 - コンテナ内でアプリはloopbackにバインドしたままです。`deploy/cloudflare/proxy.mjs`が同一オリジンのリクエストだけをloopbackとして中継し、local-demoログインを公開します。架空資産のみを扱う隔離サンドボックスであることが前提です。
-- コンテナの外部通信は無効です。Gemini・World・Base Sepoliaは使えません。
+- Gemini・Worldの設定は`wrangler.jsonc`の`vars`で切り替え、キーは`pnpm exec wrangler secret put GEMINI_API_KEY`（`WORLD_RP_SIGNING_KEY`も同様）で登録します。`AI_MODE=gemini`か`WORLD_MODE=live`のときだけコンテナの外部通信を有効にします。公開デモでは誰でもGeminiを呼べるため、AI Studio側で利用上限を設定してください。認証は常にlocal-demo、資産はstubで、Base Sepoliaは使えません。
 - 同時に起動するサンドボックス数の上限は`wrangler.jsonc`の`max_instances`で調整します。
 
 ## 認証・AI
