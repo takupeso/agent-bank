@@ -3,6 +3,7 @@ import {
   authenticateRequest,
   requirePrincipal,
   cookieValue,
+  AuthorizationError,
 } from "@/server/auth";
 import { failure } from "@/server/http";
 import {
@@ -10,6 +11,9 @@ import {
   connectionStatus,
   grantBalance,
   revokeBalance,
+  beginAgentConnection,
+  completeAgentConnection,
+  hasPendingAgentConnection,
 } from "@/features/external-agents/service";
 import {
   beginWorldCheck,
@@ -74,10 +78,10 @@ function checkOrigin(req: Request) {
   if (!req.headers.get("content-type")?.includes("application/json"))
     throw new Error("Invalid content type");
 }
-function redirect() {
+function redirect(location = "/world-agents") {
   return new Response(null, {
     status: 303,
-    headers: { ...headers, Location: "/world-agents" },
+    headers: { ...headers, Location: location },
   });
 }
 
@@ -117,7 +121,11 @@ export async function GET(req: Request) {
     callback.search = new URL(req.url).search;
     if (callback.pathname !== callbackPath) throw new Error("Invalid callback");
     await completeWorldCheck(owner, callback);
-    return redirect();
+    return redirect(
+      hasPendingAgentConnection(owner)
+        ? "/world-agents/connect"
+        : "/world-agents",
+    );
   } catch {
     // Never include callback parameters, tokens or upstream error descriptions.
     return redirect();
@@ -133,10 +141,25 @@ export async function POST(req: Request) {
       { status: 403, headers },
     );
   }
-  if (["connect", "grant", "revoke"].includes(action(req) ?? "")) {
+  if (
+    ["connect", "grant", "revoke", "complete-connection"].includes(
+      action(req) ?? "",
+    )
+  ) {
     try {
       const p = requirePrincipal(authenticateRequest(req), "human");
       const body = await req.json();
+      if (action(req) === "complete-connection") {
+        z.object({}).strict().parse(body);
+        return Response.json(
+          completeAgentConnection(
+            p,
+            browser(req) ?? "",
+            cookieValue(req, "demo_sandbox"),
+          ),
+          { headers },
+        );
+      }
       if (action(req) === "connect") {
         z.object({}).strict().parse(body);
         connectAccount(p, browser(req) ?? "");
@@ -176,7 +199,7 @@ export async function POST(req: Request) {
     if (owner) cancelWorldCheck(owner);
     return Response.json({ cancelled: true }, { headers });
   }
-  if (action(req) !== "begin")
+  if (!["begin", "begin-connection"].includes(action(req) ?? ""))
     return new Response(null, { status: 404, headers });
   if (!settingsReady())
     return Response.json(
@@ -184,8 +207,23 @@ export async function POST(req: Request) {
       { status: 503, headers },
     );
   const owner = browser(req) ?? browserSecret();
+  let selection:
+    | { p: ReturnType<typeof requirePrincipal>; input: unknown }
+    | undefined;
+  if (action(req) === "begin-connection") {
+    try {
+      selection = {
+        p: requirePrincipal(authenticateRequest(req), "human"),
+        input: await req.json(),
+      };
+    } catch (e) {
+      return failure(e);
+    }
+  }
   try {
-    const authorizationUrl = await beginWorldCheck(owner);
+    const authorizationUrl = selection
+      ? await beginAgentConnection(selection.p, owner, selection.input)
+      : await beginWorldCheck(owner);
     return Response.json(
       { authorizationUrl: authorizationUrl.href },
       {
@@ -195,7 +233,9 @@ export async function POST(req: Request) {
         },
       },
     );
-  } catch {
+  } catch (e) {
+    if (e instanceof AuthorizationError || e instanceof z.ZodError)
+      return failure(e);
     return Response.json(
       { error: "World authentication is unavailable. Please try again." },
       { status: 502, headers },

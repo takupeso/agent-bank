@@ -14,16 +14,28 @@ const items = [
     "Automation rules",
     "M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6zM9 12l2 2 4-4",
   ],
+  [
+    "/world-agents",
+    "Agent connections",
+    "M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2",
+  ],
 ];
-export function Navigation() {
+export function Navigation({ preview = false }: { preview?: boolean }) {
   const pathname = usePathname();
   return (
     <nav aria-label="Main navigation">
       {items.map(([href, title, icon]) => (
         <Link
-          href={href}
+          href={
+            preview && href === "/world-agents" ? `${href}?preview=1` : href
+          }
           key={href}
-          aria-current={pathname === href ? "page" : undefined}
+          aria-current={
+            pathname === href ||
+            (href !== "/" && pathname.startsWith(`${href}/`))
+              ? "page"
+              : undefined
+          }
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d={icon} />
