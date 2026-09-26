@@ -1,10 +1,10 @@
-import { runDemoEvent, sendChat } from "./helpers";
+import { runDemoEvent, sendChat, resetDemo } from "./helpers";
 import { test, expect, demoApprove } from "./helpers";
 test("invest surplus after explicit consent and preserve inventory", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
+  await resetDemo(page);
   await expect(
     page.locator("main").getByText("¥1,000,000", { exact: true }),
   ).toBeVisible();

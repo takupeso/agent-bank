@@ -3,13 +3,14 @@ import {
   changeRuleViaApi,
   pauseRuleViaApi,
   ruleFromApi,
+  resetDemo,
 } from "./helpers";
 import { test, expect, demoApprove } from "./helpers";
 test("chat consent persists a versioned rule then change and stop", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
+  await resetDemo(page);
   await expect(
     page.locator("main").getByText("¥1,000,000", { exact: true }),
   ).toBeVisible();

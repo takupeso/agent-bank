@@ -64,7 +64,7 @@ export default function Rules() {
   );
   return (
     <>
-      <header>
+      <header className="page-header">
         <h1>Automation rules</h1>
         <p>
           The amount your agent is authorized to manage across your accounts.

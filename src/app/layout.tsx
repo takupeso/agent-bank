@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AuthGate, LogoutButton } from "./auth-gate";
 import "./style.css";
 import { Navigation } from "./navigation";
+import { BrandLogo } from "./brand-logo";
 import { AgentPanel } from "./chat/agent-panel";
 export const metadata = {
   title: "Agent Bank — Local demo",
@@ -18,11 +19,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="app-shell">
             <aside className="sidebar">
               <Link href="/" className="brand">
-                <span className="brand-mark" aria-hidden="true">
-                  ab
+                <span className="brand-mark">
+                  <BrandLogo size={36} tone="dark" />
                 </span>
                 Agent Bank
-                <span className="brand-caption">Banking on your terms</span>
               </Link>
               <Navigation />
               <LogoutButton />

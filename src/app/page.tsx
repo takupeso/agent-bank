@@ -23,15 +23,22 @@ function AccountCard({
   subtitle,
   balance,
   movements,
+  tone,
+  fresh,
 }: {
   title: string;
   subtitle?: string;
   balance: string;
   movements: AccountMovement[];
+  tone: "deposit" | "token" | "aave";
+  fresh: ReadonlySet<string>;
 }) {
   return (
-    <section className="account-card">
+    <section className={`account-card ${tone}`}>
       <div className="account-card-header">
+        <span className="account-icon" aria-hidden="true">
+          {title.slice(0, 1)}
+        </span>
         <div>
           <h2>{title}</h2>
           {subtitle && <p>{subtitle}</p>}
@@ -44,13 +51,21 @@ function AccountCard({
         <h3>Transactions</h3>
         {movements.length ? (
           <ul>
-            {movements.slice(0, 4).map((movement) => (
-              <li key={movement.id}>
+            {movements.slice(0, 4).map((movement, index) => (
+              <li
+                key={movement.id}
+                className={fresh.has(movement.id) ? "fresh" : undefined}
+                style={
+                  fresh.has(movement.id)
+                    ? { animationDelay: `${index * 120}ms` }
+                    : undefined
+                }
+              >
                 <span
                   className={`movement-direction ${movement.direction}`}
                   aria-label={movement.direction === "in" ? "Credit" : "Debit"}
                 >
-                  {movement.direction === "in" ? "Credit" : "Debit"}
+                  {movement.direction === "in" ? "↑" : "↓"}
                 </span>
                 <span className="movement-label">{movement.label}</span>
                 <strong className={movement.direction}>
@@ -72,9 +87,10 @@ function AccountCard({
 
 export default function Home() {
   const [data, setData] = useState<View>({ initialized: false });
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
   const [refreshError, setRefreshError] = useState("");
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
+  const seen = useRef<Set<string> | null>(null);
+  const freshTimer = useRef<number | undefined>(undefined);
   const loading = useRef(false);
   const load = useCallback(async () => {
     if (loading.current) return;
@@ -102,74 +118,68 @@ export default function Home() {
       window.removeEventListener("agent-bank:invoices-updated", refresh);
     };
   }, [load]);
-  async function reset() {
-    setBusy(true);
-    setError("");
-    try {
-      const r = await apiFetch("/api/demo/reset", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-      });
-      if (!r.ok) {
-        const result = await r.json();
-        throw new Error(result.error ?? "Unable to initialize the demo");
-      }
-      await load();
-      window.dispatchEvent(new Event("agent-bank:demo-reset"));
-      window.dispatchEvent(new Event("agent-bank:invoices-updated"));
-      window.dispatchEvent(new Event("agent-bank:rules-updated"));
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
   const movements = data.movements ?? [];
+  useEffect(() => {
+    const ids = data.movements?.map((m) => m.id) ?? [];
+    if (seen.current === null) {
+      if (ids.length) seen.current = new Set(ids);
+      return;
+    }
+    const added = ids.filter((id) => !seen.current!.has(id));
+    seen.current = new Set(ids);
+    if (!added.length) return;
+    setFresh(new Set(added));
+    window.clearTimeout(freshTimer.current);
+    freshTimer.current = window.setTimeout(() => setFresh(new Set()), 2600);
+  }, [data.movements]);
+  useEffect(() => () => window.clearTimeout(freshTimer.current), []);
   const forAccount = (account: AccountMovement["account"]) =>
     movements.filter((movement) => movement.account === account);
   return (
     <>
-      <header>
+      <header className="page-header">
         <h1>Accounts</h1>
-        <p>
-          View balances and transactions across your deposit and investment
-          accounts.
-        </p>
+        <div className="toolbar">
+          {(data.mode === "sepolia" || data.profile === "ten-usdc") && (
+            <span className="badge">
+              {data.mode === "sepolia" ? "Sepolia demo" : "Local demo"}
+              {data.profile === "ten-usdc" ? " · 10 USDC starter" : ""}
+            </span>
+          )}
+        </div>
       </header>
-      <div className="toolbar">
-        {data.mode !== "sepolia" && <span className="badge">Local demo</span>}
-        {data.profile === "ten-usdc" && (
-          <span className="badge">10 USDC starter</span>
-        )}
-        <button onClick={() => void reset()} disabled={busy}>
-          {busy
-            ? "Initializing…"
-            : data.initialized
-              ? "Reset demo"
-              : "Initialize demo"}
-        </button>
-      </div>
-      {error && <p role="alert">{error}</p>}
       {refreshError && <p role="status">{refreshError}</p>}
+
+      {!data.initialized && (
+        <p className="empty-hint">
+          Open demo controls (bottom right) and choose Initialize demo to fund
+          Account A.
+        </p>
+      )}
 
       <div className="account-list">
         <AccountCard
           title="Deposit account"
           subtitle="Account A"
+          tone="deposit"
           balance={yen(data.td ?? "0")}
           movements={forAccount("deposit")}
+          fresh={fresh}
         />
         <AccountCard
           title="Token account"
+          tone="token"
           balance={`${formatUsdc(data.looseUsdc ?? "0")} USDC`}
           movements={forAccount("token")}
+          fresh={fresh}
         />
         <AccountCard
           title="Aave"
+          tone="aave"
           subtitle={data.mode === "sepolia" ? "Base Sepolia" : "Local stub"}
           balance={`${formatUsdc(data.positionUsdc ?? "0")} USDC`}
           movements={forAccount("aave")}
+          fresh={fresh}
         />
       </div>
     </>

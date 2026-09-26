@@ -88,6 +88,14 @@ export async function runDemoEvent(page: Page, type: string, succeeds = true) {
   });
 }
 
+export async function resetDemo(page: Page) {
+  await page
+    .getByRole("button", { name: "Open demo controls", exact: true })
+    .click();
+  const drawer = page.getByRole("dialog", { name: "Demo controls" });
+  await drawer.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
+  await expect(drawer).not.toBeVisible({ timeout: 60000 });
+}
 export async function ruleFromApi(page: Page, id: Rule["id"]) {
   const response = await page.request.get("/api/rules");
   expect(response.ok()).toBeTruthy();

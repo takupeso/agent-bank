@@ -1,13 +1,11 @@
-import { test, expect } from "./helpers";
+import { test, expect, resetDemo } from "./helpers";
 for (const width of [1440, 390]) {
   test(`short card and invoice demo with four controls at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 1000 });
     await page.goto("/");
-    await page
-      .getByRole("button", { name: /(Initialize|Reset) demo/, exact: true })
-      .click();
+    await resetDemo(page);
     await expect(
       page.locator("main").getByText("¥1,000,000", { exact: true }),
     ).toBeVisible();
@@ -43,8 +41,10 @@ for (const width of [1440, 390]) {
       path: `/tmp/agent-bank-short-proposal-${width}.png`,
       fullPage: true,
     });
-    await open();
-    await drawer.getByRole("button", { name: "Chat", exact: true }).click();
+    await page
+      .locator(".chat-plan-actions")
+      .getByRole("button", { name: "Yes", exact: true })
+      .click();
     await expect(
       page.getByText(
         /Payments are scheduled. Started investing your full deposit/,

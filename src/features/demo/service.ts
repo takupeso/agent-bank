@@ -178,9 +178,49 @@ export async function dashboard() {
                 : 0,
         }
       : null;
-  const redemptions = all<{ id: string; status: string }>("redemption_orders")
-    .filter((redemption) => redemption.status === "completed")
-    .map((redemption) => redemption.id.slice(redemption.id.indexOf(":") + 1));
+  const completedRedemptions = all<{ id: string; status: string }>(
+    "redemption_orders",
+  ).filter((redemption) => redemption.status === "completed");
+  const redemptions = completedRedemptions.map((redemption) =>
+    redemption.id.slice(redemption.id.indexOf(":") + 1),
+  );
+  // Runs are stored in execution order, so they give the ledger its chronology.
+  const runOrder = new Map(runs.map((run, index) => [run.id, index]));
+  const paymentRun = new Map(
+    runs
+      .filter((run) => run.kind === "payment" && run.sourceId)
+      .map((run) => [run.sourceId!, run.id]),
+  );
+  const redemptionRun = new Map(
+    completedRedemptions.map((redemption) => [
+      redemption.id.slice(redemption.id.indexOf(":") + 1),
+      redemption.id.slice(0, redemption.id.indexOf(":")),
+    ]),
+  );
+  const invoices = all<Invoice>("invoices");
+  const payee = (id: string) => {
+    const invoice = invoices.find((i) => i.id === id);
+    return invoice?.source === "card" ? invoice.cardName : invoice?.issuer;
+  };
+  const position = (runId: string | undefined) =>
+    runId === undefined ? runs.length : (runOrder.get(runId) ?? runs.length);
+  const orderRun = new Map(investments.map((order) => [order.id, order.runId]));
+  const redemptionSteps = [
+    ":aave-out",
+    ":token-withdraw",
+    ":token-out",
+    ":deposit-in",
+  ];
+  const chronology = (movement: AccountMovement) => {
+    if (movement.id === s.id + ":initial") return -1;
+    const split = movement.id.lastIndexOf(":");
+    const orderId = movement.id.slice(0, split);
+    if (orderRun.has(orderId))
+      return redemptionSteps.includes(movement.id.slice(split))
+        ? position(redemptionRun.get(orderId))
+        : position(orderRun.get(orderId));
+    return position(paymentRun.get(movement.id));
+  };
   const movements: AccountMovement[] = [
     {
       id: s.id + ":initial",
@@ -196,7 +236,9 @@ export async function dashboard() {
       direction: "out" as const,
       amount: payment.amountJpy,
       unit: "JPY" as const,
-      label: "Invoice payment",
+      label: payee(payment.id)
+        ? `Paid ${payee(payment.id)}`
+        : "Invoice payment",
     })),
     ...investments.flatMap((order) => [
       {
@@ -205,7 +247,7 @@ export async function dashboard() {
         direction: "out" as const,
         amount: order.amountJpy,
         unit: "JPY" as const,
-        label: "Reserve TD for investment",
+        label: "Invested in Aave",
       },
       ...(order.transferred
         ? [
@@ -271,7 +313,7 @@ export async function dashboard() {
               direction: "in" as const,
               amount: order.amountJpy,
               unit: "JPY" as const,
-              label: "Redeemed TD",
+              label: "Returned from Aave",
             },
           ]
         : []),
@@ -286,10 +328,17 @@ export async function dashboard() {
     td,
     recipientTd,
     locked,
-    upcoming: all<Invoice>("invoices").filter((i) => i.status !== "paid"),
+    upcoming: invoices.filter((i) => i.status !== "paid"),
     recent: runs.slice(-3).reverse(),
     investmentProgress,
-    movements: movements.reverse(),
+    movements: movements
+      .map((movement, index) => ({ movement, index }))
+      .sort(
+        (a, b) =>
+          chronology(a.movement) - chronology(b.movement) || a.index - b.index,
+      )
+      .map(({ movement }) => movement)
+      .reverse(),
     publicWallet: walletInfo(customerAccountId),
     looseUsdc: (s.looseUsdc as string) ?? "0",
     ...publicBalances,

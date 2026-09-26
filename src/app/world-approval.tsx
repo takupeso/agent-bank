@@ -54,6 +54,20 @@ export type Challenge = {
   policy?: Policy;
 };
 const yen = (value: string) => `¥${BigInt(value).toLocaleString("en-US")}`;
+const recipientName = (id: string) =>
+  id === "aoba"
+    ? "Aoba Design"
+    : id === "sakura"
+      ? "Sakura Office"
+      : "Harp Card";
+const recipientAccount = (id: string) =>
+  id === "aoba" ? "0000001" : id === "sakura" ? "0000002" : "0000003";
+const mailName = (id: string) =>
+  id === "aoba-mail"
+    ? "Aoba Design sample email"
+    : id === "sakura-mail"
+      ? "Sakura Office sample email"
+      : id;
 type DemoChallenge = { id: string; policy: Policy; expiresAt: number };
 export function WorldApproval({
   input,
@@ -166,6 +180,17 @@ export function WorldApproval({
   const conditions = policy?.conditions;
   const c = conditions && "id" in conditions ? conditions : undefined;
   const investment = policy?.investmentConditions;
+  const investmentRule = c?.id === "investment" ? c : investment;
+  const recipients =
+    c?.id === "payment"
+      ? (c.paymentRecipients ?? [
+          {
+            recipientId: c.recipientId,
+            maxPaymentJpy: c.maxPaymentJpy,
+            monthlyLimitJpy: c.monthlyLimitJpy,
+          },
+        ])
+      : [];
   const names: Record<string, string> = {
     read: "Read banking data",
     propose: "Propose terms",
@@ -179,36 +204,18 @@ export function WorldApproval({
     <section className="panel approval-policy" aria-label="World approval">
       <h2>Approve these terms</h2>
       <p>
-        Review the targets and terms saved by the bank. They take effect after
-        approval.
+        Nothing changes until you approve. The bank checks every action against
+        these terms.
       </p>
-      {((c?.id === "investment" && c.enabled) || investment?.enabled) && (
-        <p>Approval deposits available funds into Aave within these terms.</p>
-      )}
       {policy && (
         <div className="approval-summary">
-          <section className="approval-section">
-            <h3>Allowed actions</h3>
-            <p>{policy.scopes.map((s) => names[s] ?? s).join(", ")}</p>
-            {c && (
-              <p className="approval-caption">
-                {c.enabled ? "Enable" : "Pause"} · Version{" "}
-                {policy.baseVersion + 1}
-              </p>
-            )}
-          </section>
+          <p className="approval-meta">Agent: {policy.agentId}</p>
           {conditions && "mailIds" in conditions && (
             <section className="approval-section">
               <h3>Email access</h3>
               <ul>
                 {conditions.mailIds.map((id) => (
-                  <li key={id}>
-                    {id === "aoba-mail"
-                      ? "Aoba Design sample email"
-                      : id === "sakura-mail"
-                        ? "Sakura Office sample email"
-                        : id}
-                  </li>
+                  <li key={id}>{mailName(id)}</li>
                 ))}
               </ul>
             </section>
@@ -216,69 +223,111 @@ export function WorldApproval({
           {c?.id === "payment" && (
             <section className="approval-section">
               <h3>Payees and payment limits</h3>
-              <p className="approval-caption">
-                Internal transfer within Agent Bank · 1 TD = ¥1
+              <p className="approval-line">
+                {c.enabled ? "" : "Pause automatic payments. "}Payees:{" "}
+                {recipients.map((r) => recipientName(r.recipientId)).join(", ")}{" "}
+                · paid on the due date
               </p>
-              {(
-                c.paymentRecipients ?? [
-                  {
-                    recipientId: c.recipientId,
-                    maxPaymentJpy: c.maxPaymentJpy,
-                    monthlyLimitJpy: c.monthlyLimitJpy,
-                  },
-                ]
-              ).map((r) => (
-                <div className="approval-recipient" key={r.recipientId}>
-                  <h4>
-                    {r.recipientId === "aoba"
-                      ? "Aoba Design"
-                      : r.recipientId === "sakura"
-                        ? "Sakura Office"
-                        : "Harp Card"}
-                  </h4>
-                  <p className="approval-caption">
-                    Agent Bank · Harp Branch
-                    <br />
-                    Deposit account{" "}
-                    {r.recipientId === "aoba"
-                      ? "0000001"
-                      : r.recipientId === "sakura"
-                        ? "0000002"
-                        : "0000003"}{" "}
-                    (demo)
-                  </p>
-                  <dl className="approval-fields">
-                    <div>
-                      <dt>Per-payment limit</dt>
-                      <dd>{yen(r.maxPaymentJpy)}</dd>
-                    </div>
-                    <div>
-                      <dt>Monthly limit</dt>
-                      <dd>{yen(r.monthlyLimitJpy)}</dd>
-                    </div>
-                    <div>
-                      <dt>Payment date</dt>
-                      <dd>Invoice due date</dd>
-                    </div>
-                  </dl>
-                </div>
-              ))}
+              <ul className="approval-limits">
+                {recipients.map((r) => (
+                  <li key={r.recipientId}>
+                    <span>{recipientName(r.recipientId)}</span>
+                    <b>
+                      {yen(r.maxPaymentJpy)} / payment ·{" "}
+                      {yen(r.monthlyLimitJpy)} / month
+                    </b>
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
-          {(c?.id === "investment" || investment) && (
+          {investmentRule && (
             <section className="approval-section">
               <h3>Investment destination and limit</h3>
-              {investment && (
+              <p className="approval-line">
+                {investmentRule.enabled
+                  ? "Automatic investing"
+                  : "Pause automatic investing"}{" "}
+                into{" "}
+                {policy.target.investment.mode === "stub"
+                  ? "Aave (simulation)"
+                  : policy.target.investment.protocol}
+              </p>
+              <ul className="approval-limits">
+                <li>
+                  <span>Per investment</span>
+                  <b>up to {yen(investmentRule.maxInvestmentJpy)}</b>
+                </li>
+                <li>
+                  <span>Always kept in deposit</span>
+                  <b>{yen(investmentRule.safetyBufferJpy)} safety buffer</b>
+                </li>
+              </ul>
+              {investmentRule.enabled && (
                 <p className="approval-caption">
-                  {investment.enabled ? "Enable" : "Pause"} · Version{" "}
-                  {(policy.investmentBaseVersion ?? 0) + 1}
+                  Investing starts right after approval.
                 </p>
               )}
+            </section>
+          )}
+          {policy.scopes.includes("redemption") && (
+            <p className="approval-caption">
+              Redemptions happen only when you ask.
+            </p>
+          )}
+          <details className="approval-technical">
+            <summary>Full terms and account details</summary>
+            <dl className="approval-fields">
+              <div>
+                <dt>Allowed actions</dt>
+                <dd>{policy.scopes.map((s) => names[s] ?? s).join(", ")}</dd>
+              </div>
+              {[c, investment]
+                .filter((rule): rule is NonNullable<typeof c> => !!rule)
+                .map((rule) => (
+                  <div key={rule.id + "-version"}>
+                    <dt>
+                      {rule.id === "payment" ? "Payments" : "Investments"}
+                    </dt>
+                    <dd>
+                      {rule.enabled ? "Enable" : "Pause"} · Version{" "}
+                      {(rule === investment
+                        ? (policy.investmentBaseVersion ?? 0)
+                        : policy.baseVersion) + 1}
+                    </dd>
+                  </div>
+                ))}
+            </dl>
+            {c?.id === "payment" &&
+              recipients.map((r) => (
+                <p className="approval-caption" key={r.recipientId}>
+                  {recipientName(r.recipientId)}: Agent Bank · Harp Branch ·
+                  Deposit account {recipientAccount(r.recipientId)} (demo) ·
+                  internal transfer, 1 TD = ¥1
+                </p>
+              ))}
+            {[c, investment]
+              .filter((rule): rule is NonNullable<typeof c> => !!rule)
+              .map((rule) => (
+                <dl className="approval-fields" key={rule.id + "-funds"}>
+                  <div>
+                    <dt>
+                      Minimum balance ·{" "}
+                      {rule.id === "payment" ? "Payments" : "Investments"}
+                    </dt>
+                    <dd>{yen(rule.minimumBalanceJpy)}</dd>
+                  </div>
+                  <div>
+                    <dt>
+                      Safety buffer ·{" "}
+                      {rule.id === "payment" ? "Payments" : "Investments"}
+                    </dt>
+                    <dd>{yen(rule.safetyBufferJpy)}</dd>
+                  </div>
+                </dl>
+              ))}
+            {investmentRule && (
               <dl className="approval-fields">
-                <div>
-                  <dt>Destination</dt>
-                  <dd>{policy.target.investment.protocol}</dd>
-                </div>
                 <div>
                   <dt>Network</dt>
                   <dd>
@@ -289,43 +338,12 @@ export function WorldApproval({
                         : `Chain ${policy.target.investment.chainId}`}
                   </dd>
                 </div>
-                <div>
-                  <dt>Investment limit per transaction</dt>
-                  <dd>{yen((investment ?? c)!.maxInvestmentJpy)}</dd>
-                </div>
               </dl>
-            </section>
-          )}
-          {[c, investment]
-            .filter((rule): rule is NonNullable<typeof c> => !!rule)
-            .map((rule) => (
-              <section className="approval-section" key={rule.id}>
-                <h3>
-                  Funds to keep ·{" "}
-                  {rule.id === "payment" ? "Payments" : "Investments"}
-                </h3>
-                <dl className="approval-fields">
-                  <div>
-                    <dt>Minimum balance</dt>
-                    <dd>{yen(rule.minimumBalanceJpy)}</dd>
-                  </div>
-                  <div>
-                    <dt>Safety buffer</dt>
-                    <dd>{yen(rule.safetyBufferJpy)}</dd>
-                  </div>
-                </dl>
-              </section>
-            ))}
-          <details className="approval-technical">
-            <summary>Account, agent, and destination details</summary>
+            )}
             <dl className="approval-fields">
               <div>
                 <dt>Account</dt>
                 <dd>{policy.accountId}</dd>
-              </div>
-              <div>
-                <dt>Agent</dt>
-                <dd>{policy.agentId}</dd>
               </div>
             </dl>
             {c?.id === "payment" && (
@@ -338,7 +356,7 @@ export function WorldApproval({
                 </p>
               </>
             )}
-            {(c?.id === "investment" || investment) && (
+            {investmentRule && (
               <p className="hash">
                 Pool: {policy.target.investment.pool}
                 <br />

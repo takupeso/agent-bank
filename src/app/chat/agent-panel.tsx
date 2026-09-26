@@ -123,13 +123,16 @@ export function AgentPanel() {
       setBusy(false);
     }
   }
+  const pendingPlan = messages.some(
+    (m) =>
+      m.kind === "payment-plan" &&
+      (m.data?.proposal as Proposal)?.status === "proposed",
+  );
   return (
     <aside id="agent-panel" className="agent-panel" aria-label="Agent chat">
       <header className="agent-panel-header">
-        <div>
-          <h2>Agent</h2>
-          <p>Send a request or ask a question anytime</p>
-        </div>
+        <span className="agent-avatar" aria-hidden="true" />
+        <h2>Agent</h2>
       </header>
       <section
         ref={conversation}
@@ -137,7 +140,10 @@ export function AgentPanel() {
         aria-live="polite"
       >
         {messages.map((m) => (
-          <article className={"message " + m.role} key={m.id}>
+          <article
+            className={"message " + m.role + (m.kind ? " kind-" + m.kind : "")}
+            key={m.id}
+          >
             <small>{m.role === "user" ? "You" : "Agent"}</small>
             <p>
               {m.text
@@ -223,11 +229,7 @@ export function AgentPanel() {
         )}
       </section>
       <div className="chat-plan-actions">
-        {messages.some(
-          (m) =>
-            m.kind === "payment-plan" &&
-            (m.data?.proposal as Proposal)?.status === "proposed",
-        ) && (
+        {pendingPlan && (
           <button
             disabled={busy || !!approval || !!mailPermission}
             onClick={() => void send("Yes")}
@@ -244,16 +246,6 @@ export function AgentPanel() {
         }
         onRedeem={() => void send("Redeem all investments to TD")}
         chatBusy={busy || !!approval || !!mailPermission}
-        onChat={() => {
-          const plan = messages.filter((m) => m.kind === "payment-plan").at(-1);
-          if (!plan)
-            void send(
-              "I grant access to my card payment information and invoices.",
-            );
-          else if ((plan.data?.proposal as Proposal)?.status === "proposed")
-            void send("Yes");
-          else document.getElementById("chat-input")?.focus();
-        }}
       />
       <form
         className="agent-composer"
@@ -268,7 +260,7 @@ export function AgentPanel() {
             aria-label="Message the agent"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Review my emails and automate payments"
+            placeholder="Ask about payments, investments, or rules…"
           />
           <button
             disabled={busy || !!approval || !!mailPermission || !text.trim()}
