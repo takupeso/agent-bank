@@ -15,4 +15,5 @@ export const tables = [
   "redemption_orders",
   "redemption_requests",
   "execution_steps",
+  "demo_date_changes",
 ] as const;

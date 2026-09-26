@@ -11,6 +11,7 @@ type Grant = {
   id: string;
   status: string;
   mailIds: string[];
+  cardIds?: string[];
   authorization: { scopes: string[]; agentId: string; approvalMethod: string };
 };
 const tabs = [
@@ -33,7 +34,13 @@ const tabs = [
 type Tab = (typeof tabs)[number]["id"];
 const yen = (value: string) => `¥${BigInt(value).toLocaleString("en-US")}`;
 const recipientName = (id: string) =>
-  id === "aoba" ? "Aoba Design" : id === "sakura" ? "Sakura Office" : id;
+  id === "aoba"
+    ? "Aoba Design"
+    : id === "sakura"
+      ? "Sakura Office"
+      : id === "card"
+        ? "Harp Card"
+        : id;
 function paymentRecipients(rule: Rule) {
   return (
     rule.paymentRecipients ?? [
@@ -131,7 +138,7 @@ export default function Rules() {
   const visibleGrants = grants.filter((grant) =>
     grant.authorization.scopes.some((scope) =>
       tab === "data"
-        ? ["mail", "read", "propose"].includes(scope)
+        ? ["mail", "card", "read", "propose"].includes(scope)
         : tab === "payment"
           ? scope === "payment"
           : ["investment", "redemption"].includes(scope),
@@ -275,73 +282,83 @@ export default function Rules() {
                   </div>
                 </dl>
               </div>
-              <details className="rule-editor">
-                <summary>Edit settings</summary>
-                <form
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    save(r);
-                  }}
-                >
-                  {r.id === "payment" &&
-                    paymentRecipients(r).map((recipient, recipientIndex) => (
-                      <fieldset
-                        className="payment-recipient-fields"
-                        key={recipient.recipientId}
-                      >
-                        <legend>{recipientName(recipient.recipientId)}</legend>
-                        {(["maxPaymentJpy", "monthlyLimitJpy"] as const).map(
-                          (key) => (
-                            <label className="field" key={key}>
-                              {key === "maxPaymentJpy"
-                                ? "Payment limit per transaction (JPY)"
-                                : "Monthly payment limit (JPY)"}
-                              <input
-                                inputMode="numeric"
-                                value={recipient[key]}
-                                onChange={(event) =>
-                                  changePaymentLimit(
-                                    r,
-                                    recipientIndex,
-                                    key,
-                                    event.target.value,
-                                  )
-                                }
-                              />
-                            </label>
-                          ),
-                        )}
-                      </fieldset>
-                    ))}
-                  {(r.id === "payment"
-                    ? (["minimumBalanceJpy"] as const)
-                    : ([
-                        "maxInvestmentJpy",
-                        "safetyBufferJpy",
-                        "minimumBalanceJpy",
-                      ] as const)
-                  ).map((key) => (
-                    <label className="field" key={key}>
-                      {
+              {saved.investmentAllocations && (
+                <p>
+                  Invest the approved deposit and withdraw each payment amount
+                  as its due date approaches.
+                </p>
+              )}
+              {!saved.investmentAllocations && (
+                <details className="rule-editor">
+                  <summary>Edit settings</summary>
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      save(r);
+                    }}
+                  >
+                    {r.id === "payment" &&
+                      paymentRecipients(r).map((recipient, recipientIndex) => (
+                        <fieldset
+                          className="payment-recipient-fields"
+                          key={recipient.recipientId}
+                        >
+                          <legend>
+                            {recipientName(recipient.recipientId)}
+                          </legend>
+                          {(["maxPaymentJpy", "monthlyLimitJpy"] as const).map(
+                            (key) => (
+                              <label className="field" key={key}>
+                                {key === "maxPaymentJpy"
+                                  ? "Payment limit per transaction (JPY)"
+                                  : "Monthly payment limit (JPY)"}
+                                <input
+                                  inputMode="numeric"
+                                  value={recipient[key]}
+                                  onChange={(event) =>
+                                    changePaymentLimit(
+                                      r,
+                                      recipientIndex,
+                                      key,
+                                      event.target.value,
+                                    )
+                                  }
+                                />
+                              </label>
+                            ),
+                          )}
+                        </fieldset>
+                      ))}
+                    {(r.id === "payment"
+                      ? (["minimumBalanceJpy"] as const)
+                      : ([
+                          "maxInvestmentJpy",
+                          "safetyBufferJpy",
+                          "minimumBalanceJpy",
+                        ] as const)
+                    ).map((key) => (
+                      <label className="field" key={key}>
                         {
-                          maxInvestmentJpy:
-                            "Investment limit per transaction (JPY)",
-                          safetyBufferJpy: "Safety buffer (JPY)",
-                          minimumBalanceJpy: "Minimum balance (JPY)",
-                        }[key]
-                      }
-                      <input
-                        inputMode="numeric"
-                        value={r[key]}
-                        onChange={(event) =>
-                          edit(r, { [key]: event.target.value })
+                          {
+                            maxInvestmentJpy:
+                              "Investment limit per transaction (JPY)",
+                            safetyBufferJpy: "Safety buffer (JPY)",
+                            minimumBalanceJpy: "Minimum balance (JPY)",
+                          }[key]
                         }
-                      />
-                    </label>
-                  ))}
-                  <button disabled={!!approval}>Save changes</button>
-                </form>
-              </details>
+                        <input
+                          inputMode="numeric"
+                          value={r[key]}
+                          onChange={(event) =>
+                            edit(r, { [key]: event.target.value })
+                          }
+                        />
+                      </label>
+                    ))}
+                    <button disabled={!!approval}>Save changes</button>
+                  </form>
+                </details>
+              )}
               <div className="quick-actions">
                 <button
                   type="button"
@@ -403,6 +420,23 @@ export default function Rules() {
                       ))}
                     </ul>
                     <p>Access is limited to the selected emails.</p>
+                  </section>
+                )}
+                {g.authorization.scopes.includes("card") && (
+                  <section>
+                    <h3>Credit card payments</h3>
+                    <ul>
+                      {(g.cardIds ?? []).map((id) => (
+                        <li key={id}>
+                          {id === "harp-card-202609"
+                            ? "Harp Business Card •••• 4242: statement amount and payment due date"
+                            : id}
+                        </li>
+                      ))}
+                    </ul>
+                    <p>
+                      Only the selected demo card statements are accessible.
+                    </p>
                   </section>
                 )}
                 {g.authorization.scopes.includes("read") && (

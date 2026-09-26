@@ -1,34 +1,26 @@
+import { runDemoEvent, sendChat } from "./helpers";
 import { test, expect, demoApprove } from "./helpers";
-import { openDemoActions } from "./helpers";
 test("redeem all investment through chat and restore original TD", async ({
   page,
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
-  await expect(page.locator("main").getByText("¥1,000,000", { exact: true })).toBeVisible();
+  await expect(
+    page.locator("main").getByText("¥1,000,000", { exact: true }),
+  ).toBeVisible();
   await page.goto("/chat");
-  await openDemoActions(page);
-  await openDemoActions(page);
-  await page
-    .getByRole("button", {
-      name: "I allow access to my emails. Please check the invoices.",
-      exact: true,
-    })
-    .click();
+
+  await sendChat(
+    page,
+    "I allow access to my emails. Please check the invoices.",
+  );
   await demoApprove(page);
-  await openDemoActions(page);
-  await page
-    .getByRole("button", {
-      name: "Confirm payment setup",
-      exact: true,
-    })
-    .click();
+
+  await sendChat(page, "Confirm these settings");
   await demoApprove(page);
   await expect(page.getByText("Approval", { exact: true })).toHaveCount(2);
-  await openDemoActions(page);
-  await page
-    .getByRole("button", { name: "Demo: advance to payment due date" })
-    .click();
+
+  await runDemoEvent(page, "due_date_reached");
   await expect(
     page.getByText("Paid ¥200,000 to Aoba Design.", {
       exact: true,
@@ -48,10 +40,8 @@ test("redeem all investment through chat and restore original TD", async ({
   expect(after.positionUsdc).toBe(data.positionUsdc);
   expect(after.locked).toBe(data.locked);
   expect(after.treasuryUsdc).toBe(data.treasuryUsdc);
-  await openDemoActions(page);
-  await page
-    .getByRole("button", { name: "Redeem all investments to TD", exact: true })
-    .click();
+
+  await sendChat(page, "Redeem all investments to TD");
   await expect(
     page.getByText(
       "Investments redeemed. ¥400,000 returned to your TD deposit.",
@@ -75,39 +65,29 @@ test("redeem multiple positions even after investment rule is stopped", async ({
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
-  await expect(page.locator("main").getByText("¥1,000,000", { exact: true })).toBeVisible();
+  await expect(
+    page.locator("main").getByText("¥1,000,000", { exact: true }),
+  ).toBeVisible();
   await page.goto("/chat");
-  await openDemoActions(page);
-  await openDemoActions(page);
-  await page
-    .getByRole("button", {
-      name: "I allow access to my emails. Please check the invoices.",
-      exact: true,
-    })
-    .click();
+
+  await sendChat(
+    page,
+    "I allow access to my emails. Please check the invoices.",
+  );
   await demoApprove(page);
-  await openDemoActions(page);
-  await page
-    .getByRole("button", {
-      name: "Confirm payment setup",
-      exact: true,
-    })
-    .click();
+
+  await sendChat(page, "Confirm these settings");
   await demoApprove(page);
   await expect(page.getByText("Approval", { exact: true })).toHaveCount(2);
-  await openDemoActions(page);
-  await page
-    .getByRole("button", { name: "Demo: advance to payment due date" })
-    .click();
+
+  await runDemoEvent(page, "due_date_reached");
   await expect(
     page.getByText("Paid ¥200,000 to Aoba Design.", {
       exact: true,
     }),
   ).toBeVisible();
-  await openDemoActions(page);
-  await page
-    .getByRole("button", { name: "Redeem all investments to TD", exact: true })
-    .click();
+
+  await sendChat(page, "Redeem all investments to TD");
   await expect(
     page.getByText(
       "Investments redeemed. ¥400,000 returned to your TD deposit.",
@@ -122,16 +102,14 @@ test("redeem multiple positions even after investment rule is stopped", async ({
   await page.getByRole("button", { name: "Save changes" }).last().click();
   await demoApprove(page);
   await page.goto("/chat");
-  await openDemoActions(page);
+
   await expect(
     page.getByText(
       "Started investing ¥200,000 from your deposit account in Aave. (Simulation)",
     ),
   ).toBeVisible();
-  await openDemoActions(page);
-  await page
-    .getByRole("button", { name: "Demo: check available funds" })
-    .click();
+
+  await runDemoEvent(page, "surplus_check");
   await expect(
     page.getByText(
       "Started investing ¥200,000 from your deposit account in Aave. (Simulation)",
@@ -156,11 +134,8 @@ test("redeem multiple positions even after investment rule is stopped", async ({
   await page.getByRole("button", { name: "Pause" }).last().click();
   await expect(page.getByText("Paused · Version 3")).toBeVisible();
   await page.goto("/chat");
-  await openDemoActions(page);
-  await openDemoActions(page);
-  await page
-    .getByRole("button", { name: "Redeem all investments to TD", exact: true })
-    .click();
+
+  await sendChat(page, "Redeem all investments to TD");
   await expect(
     page.getByText(
       "Investments redeemed. ¥400,000 returned to your TD deposit.",

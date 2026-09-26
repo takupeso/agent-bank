@@ -1,3 +1,18 @@
+import {
+  grantPaymentDataRequest,
+  proposePaymentPlan,
+  type PaymentPlanProposal,
+} from "../demo-plan/service";
+import { readCards } from "../cards/service";
+import { authState } from "@/server/auth";
+import {
+  confirmMailDelegation,
+  beginDemoApproval,
+  completeDemoApproval,
+} from "../world/service";
+import { canRetryPlan } from "../investment/plan";
+import type { Rule, Run } from "../../shared/domain";
+import { activateApprovedInvestment } from "../world/activation";
 import "server-only";
 import {
   redeem,
@@ -41,6 +56,10 @@ export async function chat(
     credentialId: principal.credentialId,
   });
   const aliases: Record<string, string> = {
+    "カード支払い情報、請求書情報をアクセス権限を付与する":
+      grantPaymentDataRequest,
+    "カード支払い情報、請求書情報へのアクセス権限を付与する":
+      grantPaymentDataRequest,
     "I allow access to my emails. Please check the invoices.":
       "Authorize and review sample emails",
     "メールの閲覧を許可します。請求書を確認して":
@@ -54,6 +73,7 @@ export async function chat(
   };
   text = Object.hasOwn(aliases, text) ? aliases[text] : text;
   const request = [
+    grantPaymentDataRequest,
     "Authorize and review sample emails",
     redemptionRequest,
     "Invest my available funds",
@@ -64,7 +84,27 @@ export async function chat(
     ? "other"
     : await classifyRequest(text);
   requirePrincipal(principal, "human");
-  if (
+  if (text === grantPaymentDataRequest) {
+    if (get("rules", "payment") || get("rules", "investment"))
+      throw new Error("Reset the demo before creating a new payment plan");
+    const grant = createDelegationProposal(
+      principal,
+      ["aoba-mail", "sakura-mail"],
+      ["harp-card-202609"],
+    );
+    confirmMailDelegation(grant.id, principal);
+    const agent = internalAgentPrincipal();
+    await readAuthorized(agent);
+    readCards(agent);
+    const plan = await proposePaymentPlan(agent);
+    requirePrincipal(principal, "human");
+    message(
+      "assistant",
+      "I found these invoice and card payments. May I invest your full deposit until each payment is needed?",
+      "payment-plan",
+      plan,
+    );
+  } else if (
     text === "Authorize and review sample emails" ||
     request === "read_mail"
   ) {
@@ -136,8 +176,44 @@ export async function chat(
     proposalId
   ) {
     const proposal = get<Proposal>("proposals", proposalId);
+    if (
+      proposal?.status === "accepted" &&
+      proposal.conditions.investmentAllocations
+    ) {
+      const rule = get<Rule>("rules", "investment");
+      if (
+        !rule ||
+        rule.consentId !== proposal.consentId ||
+        !canRetryPlan(get<Run>("runs", rule.consentId))
+      )
+        throw new Error("No unstarted investment to retry");
+      await activateApprovedInvestment({ rule });
+      return all<Message>("messages");
+    }
     if (!proposal || proposal.status !== "proposed")
       throw new Error("Pending proposal required");
+    if (proposal.conditions.investmentAllocations) {
+      const plan = proposal as PaymentPlanProposal;
+      const input = {
+        purpose: "setup",
+        paymentProposalId: plan.paymentProposalId,
+        investmentProposalId: plan.id,
+      };
+      if (authState().mode === "local-demo") {
+        const challenge = beginDemoApproval(input, principal);
+        await activateApprovedInvestment(
+          await completeDemoApproval(challenge.id, principal),
+        );
+      } else {
+        message(
+          "assistant",
+          "Confirm with World to start this plan.",
+          "approval-request",
+          { input },
+        );
+      }
+      return all<Message>("messages");
+    }
     const payment = all<Proposal>("proposals")
       .filter((p) => p.kind === "payment" && p.status === "proposed")
       .at(-1);

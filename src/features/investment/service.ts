@@ -1,7 +1,7 @@
 import { type Principal } from "../../server/auth";
 import {
   assertScope,
-  allowedMailIds,
+  allowedPaymentSourceIds,
   proposalBinding,
 } from "../delegations/service";
 import { assertRuleApproval } from "../world/service";
@@ -31,11 +31,15 @@ export type Investment = {
   customer: string;
   intentId: string;
   runId: string;
+  allocationId?: string;
+  publicOperationId?: string;
+  funded?: boolean;
+  consentId?: string;
 };
 export async function proposeInvestment(principal: Principal) {
   assertScope(principal, "propose");
   assertScope(principal, "mail");
-  const mailIds = allowedMailIds(principal);
+  const mailIds = allowedPaymentSourceIds(principal);
   if (all<Invoice>("invoices").some((i) => !mailIds.includes(i.emailId)))
     throw new Error("Unpermitted source");
   if (!all<Invoice>("invoices").length) throw new Error("Read sources first");
@@ -54,7 +58,7 @@ export async function proposeInvestment(principal: Principal) {
     consentId: "",
   };
   const snapshot = await cashflow(proposedRule);
-  const latestMailIds = allowedMailIds(principal);
+  const latestMailIds = allowedPaymentSourceIds(principal);
   if (all<Invoice>("invoices").some((i) => !latestMailIds.includes(i.emailId)))
     throw new Error("Mail permission changed");
   const id = randomUUID();
@@ -84,9 +88,10 @@ export async function invest(
   principal: Principal,
   requestId: string,
   approvedRule?: Pick<Rule, "version" | "consentId">,
+  allocationId?: string,
 ) {
   assertScope(principal, "mail");
-  const permittedMail = allowedMailIds(principal);
+  const permittedMail = allowedPaymentSourceIds(principal);
   if (all<Invoice>("invoices").some((i) => !permittedMail.includes(i.emailId)))
     throw new Error("Unpermitted source");
   const delegation = assertScope(principal, "investment");
@@ -101,7 +106,7 @@ export async function invest(
   assertRuleApproval(initialRule);
   const guard = () => {
     assertScope(principal, "mail");
-    const ids = allowedMailIds(principal);
+    const ids = allowedPaymentSourceIds(principal);
     if (all<Invoice>("invoices").some((i) => !ids.includes(i.emailId)))
       throw new Error("Mail permission changed");
     const latest = assertScope(principal, "investment");
@@ -142,6 +147,31 @@ export async function invest(
       }
       assertRuleApproval(rule);
       const snapshot = await cashflow();
+      if (rule.investmentAllocations) {
+        const allocation = rule.investmentAllocations.find(
+          (lot) => lot.id === allocationId,
+        );
+        if (!allocation || !approvedRule)
+          throw new Error("Approved allocation required");
+        if (
+          all<Investment>("investment_orders").some(
+            (order) =>
+              order.consentId === rule.consentId &&
+              order.allocationId === allocation.id,
+          )
+        )
+          throw new Error("Allocation already invested");
+        const used = all<Investment>("investment_orders")
+          .filter((order) => order.consentId === rule.consentId)
+          .reduce((sum, order) => sum + BigInt(order.amountJpy), 0n);
+        if (
+          used + BigInt(allocation.amountJpy) > BigInt(rule.maxInvestmentJpy) ||
+          BigInt(allocation.amountJpy) > BigInt(snapshot.td)
+        )
+          throw new Error("Allocation exceeds approved balance");
+        snapshot.investJpy = allocation.amountJpy;
+        snapshot.usdcUnits = (BigInt(allocation.amountJpy) * 6250n).toString();
+      }
       const amount = BigInt(snapshot.investJpy);
       if (amount === 0n) return null;
       const snapshotId = randomUUID();
@@ -177,6 +207,7 @@ export async function invest(
         customer: s.customer,
         intentId: intent.id,
         runId: requestId,
+        ...(allocationId ? { allocationId, consentId: rule.consentId } : {}),
       };
       run = {
         ...run,
@@ -233,16 +264,17 @@ export async function invest(
     run.status = "completed";
     put("runs", run);
     release(requestId);
-    message(
-      "assistant",
-      prepared
-        ? `Started investing ¥${BigInt(prepared.order.amountJpy).toLocaleString("en-US")} from your deposit account in Aave.${mode() === "sepolia" ? "" : " (Simulation)"}`
-        : inactive
-          ? "No investment was made because automatic investing is disabled."
-          : "No additional funds are available to invest.",
-      "execution",
-      { run },
-    );
+    if (!allocationId)
+      message(
+        "assistant",
+        prepared
+          ? `Started investing ¥${BigInt(prepared.order.amountJpy).toLocaleString("en-US")} from your deposit account in Aave.${mode() === "sepolia" ? "" : " (Simulation)"}`
+          : inactive
+            ? "No investment was made because automatic investing is disabled."
+            : "No additional funds are available to invest.",
+        "execution",
+        { run },
+      );
     return run;
   } catch (e) {
     put("runs", {
