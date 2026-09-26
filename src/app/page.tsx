@@ -2,7 +2,7 @@
 import { apiFetch } from "./api-client";
 import { formatUsdc } from "@/shared/format";
 import type { AccountMovement } from "@/shared/domain";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type View = {
   initialized: boolean;
@@ -10,8 +10,13 @@ type View = {
   profile?: string;
   td?: string;
   positionUsdc?: string;
-  locked?: string;
+  looseUsdc?: string;
   movements?: AccountMovement[];
+  investmentProgress?: {
+    runId: string;
+    status: "running" | "completed" | "needs_attention";
+    completedStages: number;
+  } | null;
 };
 
 function yen(value: string) {
@@ -22,13 +27,11 @@ function AccountCard({
   title,
   subtitle,
   balance,
-  note,
   movements,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   balance: string;
-  note: string;
   movements: AccountMovement[];
 }) {
   return (
@@ -36,11 +39,12 @@ function AccountCard({
       <div className="account-card-header">
         <div>
           <h2>{title}</h2>
-          <p>{subtitle}</p>
+          {subtitle && <p>{subtitle}</p>}
         </div>
-        <strong>{balance}</strong>
+        <strong key={balance} className="account-balance">
+          {balance}
+        </strong>
       </div>
-      <p className="account-note">{note}</p>
       <div className="account-activity">
         <h3>入出金</h3>
         {movements.length ? (
@@ -75,13 +79,34 @@ export default function Home() {
   const [data, setData] = useState<View>({ initialized: false });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  async function load() {
-    const r = await apiFetch("/api/dashboard");
-    if (r.ok) setData(await r.json());
-  }
-  useEffect(() => {
-    void load();
+  const [refreshError, setRefreshError] = useState("");
+  const loading = useRef(false);
+  const load = useCallback(async () => {
+    if (loading.current) return;
+    loading.current = true;
+    try {
+      const r = await apiFetch("/api/dashboard", {
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!r.ok) throw new Error("残高を更新できませんでした。");
+      setData(await r.json());
+      setRefreshError("");
+    } catch {
+      setRefreshError("残高を更新できませんでした。再接続を待っています。");
+    } finally {
+      loading.current = false;
+    }
   }, []);
+  useEffect(() => {
+    const refresh = () => void load();
+    void load();
+    const poll = window.setInterval(refresh, 1500);
+    window.addEventListener("agent-bank:invoices-updated", refresh);
+    return () => {
+      window.clearInterval(poll);
+      window.removeEventListener("agent-bank:invoices-updated", refresh);
+    };
+  }, [load]);
   async function reset() {
     setBusy(true);
     setError("");
@@ -91,7 +116,10 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: "{}",
       });
-      if (!r.ok) throw new Error("初期化できませんでした");
+      if (!r.ok) {
+        const result = await r.json();
+        throw new Error(result.error ?? "初期化できませんでした");
+      }
       await load();
     } catch (e) {
       setError(String(e));
@@ -122,34 +150,70 @@ export default function Home() {
         </button>
       </div>
       {error && <p role="alert">{error}</p>}
+      {refreshError && <p role="status">{refreshError}</p>}
 
+      {data.investmentProgress && (
+        <section className="investment-progress" aria-label="運用の進行状況">
+          <ol>
+            {["預金口座", "トークン口座", "Aave"].map((label, index) => {
+              const progress = data.investmentProgress!;
+              const done = index < progress.completedStages;
+              const active = index === progress.completedStages;
+              return (
+                <li
+                  key={label}
+                  data-state={done ? "complete" : active ? "active" : "pending"}
+                  aria-current={active ? "step" : undefined}
+                >
+                  <b>{label}</b>
+                  <span>
+                    {done
+                      ? ["TD確保済み", "USDC受取済み", "預入完了"][index]
+                      : active
+                        ? progress.status === "needs_attention"
+                          ? "要確認"
+                          : [
+                              "TDを確保中",
+                              "USDC受取の確定待ち",
+                              "Aave預入の確定待ち",
+                            ][index]
+                        : "待機中"}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+          <p role="status">
+            {data.investmentProgress.status === "needs_attention"
+              ? "処理が停止しました。実行記録を確認してください。"
+              : data.investmentProgress.completedStages === 3
+                ? "Aaveへの預入が完了しました。"
+                : "取引の確定に合わせて残高と入出金を更新しています。"}
+          </p>
+        </section>
+      )}
       <div className="account-list">
         <AccountCard
           title="預金口座"
-          subtitle="口座A · 利用可能な残高"
+          subtitle="口座A"
           balance={yen(data.td ?? "0")}
-          note="TD · 1 TD = 1円"
           movements={forAccount("deposit")}
         />
         <AccountCard
           title="トークン口座"
-          subtitle="運用に対応するTD"
-          balance={yen(data.locked ?? "0")}
-          note="運用分として確保中の残高です。預金口座と重ねて合算しません。"
+          balance={`${formatUsdc(data.looseUsdc ?? "0")} USDC`}
           movements={forAccount("token")}
         />
         <AccountCard
           title="Aave"
           subtitle={data.mode === "sepolia" ? "Base Sepolia" : "ローカルstub"}
           balance={`${formatUsdc(data.positionUsdc ?? "0")} USDC`}
-          note="Aaveで運用中のUSDC残高"
           movements={forAccount("aave")}
         />
         <AccountCard
           title="Morpho"
           subtitle="未接続"
           balance="—"
-          note="接続後に運用残高と入出金履歴を表示します。"
           movements={[]}
         />
       </div>

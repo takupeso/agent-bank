@@ -54,10 +54,12 @@ export function DemoEvent({
   type,
   label,
   onComplete,
+  onError,
 }: {
   type: string;
   label: string;
   onComplete: () => void;
+  onError?: (error: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [run, setRun] = useState<Run | null>(null);
@@ -82,6 +84,7 @@ export function DemoEvent({
       onComplete();
     } catch (e) {
       setError(String(e));
+      onError?.(String(e));
     } finally {
       clearInterval(poll);
       setBusy(false);

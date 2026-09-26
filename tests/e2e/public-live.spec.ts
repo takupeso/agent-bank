@@ -58,17 +58,17 @@ test("Sepolia principal round trip with Anvil TD and on-chain receipts", async (
     text: "そうしてください",
     proposalId: investment.id,
   });
-  await approveApi(
+  const before = await (await page.request.get("/api/dashboard")).json();
+  const approved = await approveApi(
     page.request,
     { purpose: "proposal", proposalId: investment.id },
     origin,
   );
-  const before = await (await page.request.get("/api/dashboard")).json();
   const amount = before.profile === "ten-usdc" ? "1600" : "400000";
-  const run = await post("/api/demo/events", {
-    type: "surplus_check",
-    requestId: crypto.randomUUID(),
-  });
+  expect(approved.activation.status).toBe("completed");
+  const run = await (
+    await page.request.get(`/api/runs/${approved.activation.runId}`)
+  ).json();
   expect(
     run.steps.filter((s: { mode: string }) => s.mode === "sepolia"),
   ).toHaveLength(3);

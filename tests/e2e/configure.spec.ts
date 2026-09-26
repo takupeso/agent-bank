@@ -8,6 +8,7 @@ test("chat consent persists a versioned rule then change and stop", async ({
   await expect(page.getByText("¥1,000,000", { exact: true })).toBeVisible();
   await page.goto("/chat");
   await openDemoActions(page);
+  await openDemoActions(page);
   await page
     .getByRole("button", {
       name: "サンプルメールの閲覧を許可して確認",
@@ -18,6 +19,7 @@ test("chat consent persists a versioned rule then change and stop", async ({
   await expect(
     page.getByText("自動支払いの設定案", { exact: true }),
   ).toBeVisible();
+  await openDemoActions(page);
   await page
     .getByRole("button", {
       name: "そうしてください（支払い設定）",

@@ -60,10 +60,6 @@ test("ten USDC profile proposes and redeems exactly 1600 TD locally", async ({
     { purpose: "proposal", proposalId: proposal.id },
     origin,
   );
-  await post("/api/demo/events", {
-    type: "surplus_check",
-    requestId: crypto.randomUUID(),
-  });
   const invested = await (await page.request.get("/api/dashboard")).json();
   expect(invested.locked).toBe("1600");
   expect(invested.positionUsdc).toBe("10000000");

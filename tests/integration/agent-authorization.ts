@@ -24,7 +24,7 @@ const { proposeInvestment, invest } = await import(
 const { createRedemptionRequest, redeem } = await import(
   "../../src/features/investment/redemption"
 );
-const { get } = await import("../../src/server/records");
+const { get, put } = await import("../../src/server/records");
 const human = auth.authenticateRequest(
   new Request("http://localhost", {
     headers: { cookie: `bank_session=${auth.issueHumanSession(null).token}` },
@@ -59,8 +59,21 @@ assert.equal(readRun.run.id, paid.id);
 const afterPayment = await dashboard();
 assert.ok("td" in afterPayment);
 assert.equal(afterPayment.td, "800000");
+const unpaid = get<any>("invoices", "sakura:SAKURA-202609-001");
+put("invoices", { ...unpaid, amountJpy: "200000" });
+const reduced = await proposeInvestment(agent);
+assert.equal(reduced.snapshot.investJpy, "300000");
+assert.equal(reduced.proposal.conditions.maxInvestmentJpy, "300000");
+assert.equal(
+  get<any>("proposals", reduced.proposal.id).conditions.maxInvestmentJpy,
+  "300000",
+);
+put("invoices", unpaid);
 const proposal = await proposeInvestment(agent);
+assert.equal(proposal.snapshot.investJpy, "400000");
+assert.equal(proposal.proposal.conditions.maxInvestmentJpy, "400000");
 await approve({ purpose: "proposal", proposalId: proposal.proposal.id });
+assert.equal(get<any>("rules", "investment").maxInvestmentJpy, "400000");
 const invested = await invest(agent, crypto.randomUUID());
 assert.equal(invested.status, "completed");
 const afterInvestment = await dashboard();

@@ -461,7 +461,9 @@ function applyPolicy(c: Challenge) {
     text:
       rule.id === "payment"
         ? "自動支払いを設定しました。条件に合う請求書は期日に自動で支払います。"
-        : "余力の自動運用を設定しました。必要資金を残して運用します。",
+        : rule.enabled
+          ? "余力の自動運用を設定しました。承認条件を再確認して運用を開始します。"
+          : "余力の自動運用を停止しました。",
     data: { rule },
   });
   const delegation = applyDelegation(undefined, binding, rule);

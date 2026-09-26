@@ -8,6 +8,7 @@ test("redeem all investment through chat and restore original TD", async ({
   await expect(page.getByText("¥1,000,000", { exact: true })).toBeVisible();
   await page.goto("/chat");
   await openDemoActions(page);
+  await openDemoActions(page);
   await page
     .getByRole("button", {
       name: "サンプルメールの閲覧を許可して確認",
@@ -15,6 +16,7 @@ test("redeem all investment through chat and restore original TD", async ({
     })
     .click();
   await demoApprove(page);
+  await openDemoActions(page);
   await page
     .getByRole("button", {
       name: "そうしてください（支払い設定）",
@@ -23,28 +25,30 @@ test("redeem all investment through chat and restore original TD", async ({
     .click();
   await demoApprove(page);
   await expect(page.getByText("承認時の設定", { exact: true })).toBeVisible();
+  await openDemoActions(page);
   await page.getByRole("button", { name: "デモ：支払期日を迎える" }).click();
   await expect(
     page.getByText("アオバデザインへの¥200,000の支払いが完了しました。", {
       exact: true,
     }),
   ).toBeVisible();
+  await openDemoActions(page);
   await page
     .getByRole("button", { name: "余力を運用したい", exact: true })
     .click();
   await expect(
     page.getByText("余力運用の設定案", { exact: true }),
   ).toBeVisible();
+  await openDemoActions(page);
   await page
     .getByRole("button", { name: "そうしてください（運用設定）", exact: true })
     .click();
   await demoApprove(page);
   await expect(
     page.getByText(
-      "余力の自動運用を設定しました。必要資金を残して運用します。",
+      "余力の自動運用を設定しました。承認条件を再確認して運用を開始します。",
     ),
   ).toBeVisible();
-  await page.getByRole("button", { name: "デモ：余力をチェック" }).click();
   await expect(
     page.getByText(
       "¥400,000を別段口座にlockし、2,500擬似USDC相当を模擬運用しました。",
@@ -64,6 +68,7 @@ test("redeem all investment through chat and restore original TD", async ({
   expect(after.positionUsdc).toBe(data.positionUsdc);
   expect(after.locked).toBe(data.locked);
   expect(after.treasuryUsdc).toBe(data.treasuryUsdc);
+  await openDemoActions(page);
   await page
     .getByRole("button", { name: "運用分を全部TDに戻して", exact: true })
     .click();
@@ -89,6 +94,7 @@ test("redeem multiple positions even after investment rule is stopped", async ({
   await expect(page.getByText("¥1,000,000", { exact: true })).toBeVisible();
   await page.goto("/chat");
   await openDemoActions(page);
+  await openDemoActions(page);
   await page
     .getByRole("button", {
       name: "サンプルメールの閲覧を許可して確認",
@@ -96,6 +102,7 @@ test("redeem multiple positions even after investment rule is stopped", async ({
     })
     .click();
   await demoApprove(page);
+  await openDemoActions(page);
   await page
     .getByRole("button", {
       name: "そうしてください（支払い設定）",
@@ -104,26 +111,36 @@ test("redeem multiple positions even after investment rule is stopped", async ({
     .click();
   await demoApprove(page);
   await expect(page.getByText("承認時の設定", { exact: true })).toBeVisible();
+  await openDemoActions(page);
   await page.getByRole("button", { name: "デモ：支払期日を迎える" }).click();
   await expect(
     page.getByText("アオバデザインへの¥200,000の支払いが完了しました。", {
       exact: true,
     }),
   ).toBeVisible();
+  await openDemoActions(page);
   await page
     .getByRole("button", { name: "余力を運用したい", exact: true })
     .click();
   await expect(
     page.getByText("余力運用の設定案", { exact: true }),
   ).toBeVisible();
+  await openDemoActions(page);
   await page
     .getByRole("button", { name: "そうしてください（運用設定）", exact: true })
     .click();
   await demoApprove(page);
   await expect(
     page.getByText(
-      "余力の自動運用を設定しました。必要資金を残して運用します。",
+      "余力の自動運用を設定しました。承認条件を再確認して運用を開始します。",
     ),
+  ).toBeVisible();
+  await openDemoActions(page);
+  await page
+    .getByRole("button", { name: "運用分を全部TDに戻して", exact: true })
+    .click();
+  await expect(
+    page.getByText("運用分を償還し、¥400,000をTD預金へ戻しました。"),
   ).toBeVisible();
   await page.goto("/rules");
   await page.getByLabel("1回の運用上限（円）").fill("200000");
@@ -131,12 +148,12 @@ test("redeem multiple positions even after investment rule is stopped", async ({
   await demoApprove(page);
   await page.goto("/chat");
   await openDemoActions(page);
-  await page.getByRole("button", { name: "デモ：余力をチェック" }).click();
   await expect(
     page.getByText(
       "¥200,000を別段口座にlockし、1,250擬似USDC相当を模擬運用しました。",
     ),
   ).toBeVisible();
+  await openDemoActions(page);
   await page.getByRole("button", { name: "デモ：余力をチェック" }).click();
   await expect(
     page.getByText(
@@ -162,12 +179,13 @@ test("redeem multiple positions even after investment rule is stopped", async ({
   await expect(page.getByText("停止中 · 第3版")).toBeVisible();
   await page.goto("/chat");
   await openDemoActions(page);
+  await openDemoActions(page);
   await page
     .getByRole("button", { name: "運用分を全部TDに戻して", exact: true })
     .click();
   await expect(
     page.getByText("運用分を償還し、¥400,000をTD預金へ戻しました。"),
-  ).toBeVisible();
+  ).toHaveCount(2);
   const restored = await (await page.request.get("/api/dashboard")).json();
   expect(restored.td).toBe("800000");
   expect(restored.recipientTd).toBe("200000");

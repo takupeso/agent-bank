@@ -1,3 +1,4 @@
+import { activateApprovedInvestment } from "@/features/world/activation";
 import { sqlite, current } from "@/server/db";
 import { authState, AuthorizationError } from "@/server/auth";
 import { randomBytes } from "node:crypto";
@@ -80,7 +81,9 @@ export async function POST(req: Request) {
       return Response.json({ cancelled: true });
     }
     return Response.json(
-      await completeChallenge(body.id, token, body.proof, principal),
+      await activateApprovedInvestment(
+        await completeChallenge(body.id, token, body.proof, principal),
+      ),
     );
   } catch (e) {
     return httpFailure(e);

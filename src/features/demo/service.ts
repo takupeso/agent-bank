@@ -1,6 +1,10 @@
 import { requirePrincipal, type Principal } from "../../server/auth";
 import "server-only";
-import { balances, assertResettable } from "../../integrations/aave/sepolia";
+import {
+  balances,
+  assertResettable,
+  publicTables,
+} from "../../integrations/aave/sepolia";
 import {
   ensureCustomerWallet,
   walletInfo,
@@ -116,12 +120,51 @@ export async function dashboard() {
   const payments = all<Payment>("payment_history").filter(
     (payment) => payment.status === "confirmed",
   );
+  const publicBalances: Partial<Awaited<ReturnType<typeof balances>>> =
+    s.publicMode === "sepolia" ? await balances() : {};
+  if (s.publicMode === "sepolia") publicTables();
+  const confirmedStep = (id: string) =>
+    s.publicMode === "sepolia" &&
+    (
+      sqlite.prepare("SELECT status FROM public_steps WHERE id=?").get(id) as
+        | { status: string }
+        | undefined
+    )?.status === "confirmed";
+  const runs = all<Run>("runs");
   const investments = all<{
     id: string;
     amountJpy: string;
     usdcUnits: string;
     status: "locked" | "invested" | "redeemed";
-  }>("investment_orders");
+    runId: string;
+  }>("investment_orders").map((order) => ({
+    ...order,
+    transferred:
+      order.status !== "locked" || confirmedStep(order.id + ":bank:transfer"),
+    supplied: order.status !== "locked" || confirmedStep(order.id + ":supply"),
+  }));
+  const latestInvestment = [...runs]
+    .reverse()
+    .find((run) => run.kind === "investment");
+  const latestOrder = investments.find(
+    (order) => order.runId === latestInvestment?.id,
+  );
+  const investmentProgress =
+    latestInvestment &&
+    latestOrder?.status !== "redeemed" &&
+    (latestInvestment.status !== "completed" || latestOrder)
+      ? {
+          runId: latestInvestment.id,
+          status: latestInvestment.status,
+          completedStages: latestOrder?.supplied
+            ? 3
+            : latestOrder?.transferred
+              ? 2
+              : latestOrder
+                ? 1
+                : 0,
+        }
+      : null;
   const redemptions = all<{ id: string; status: string }>("redemption_orders")
     .filter((redemption) => redemption.status === "completed")
     .map((redemption) => redemption.id.slice(redemption.id.indexOf(":") + 1));
@@ -142,64 +185,84 @@ export async function dashboard() {
       unit: "JPY" as const,
       label: "請求書の支払い",
     })),
-    ...investments
-      .filter(
-        (order) => order.status === "invested" || order.status === "redeemed",
-      )
-      .flatMap((order) => [
-        {
-          id: order.id + ":deposit-out",
-          account: "deposit" as const,
-          direction: "out" as const,
-          amount: order.amountJpy,
-          unit: "JPY" as const,
-          label: "運用分をトークン口座へ移動",
-        },
-        {
-          id: order.id + ":token-in",
-          account: "token" as const,
-          direction: "in" as const,
-          amount: order.amountJpy,
-          unit: "JPY" as const,
-          label: "運用分を確保",
-        },
-        {
-          id: order.id + ":aave-in",
-          account: "aave" as const,
-          direction: "in" as const,
-          amount: order.usdcUnits,
-          unit: "USDC" as const,
-          label: "Aaveへ預入",
-        },
-        ...(redemptions.includes(order.id)
-          ? [
-              {
-                id: order.id + ":aave-out",
-                account: "aave" as const,
-                direction: "out" as const,
-                amount: order.usdcUnits,
-                unit: "USDC" as const,
-                label: "Aaveから引出し",
-              },
-              {
-                id: order.id + ":token-out",
-                account: "token" as const,
-                direction: "out" as const,
-                amount: order.amountJpy,
-                unit: "JPY" as const,
-                label: "運用分を預金へ返却",
-              },
-              {
-                id: order.id + ":deposit-in",
-                account: "deposit" as const,
-                direction: "in" as const,
-                amount: order.amountJpy,
-                unit: "JPY" as const,
-                label: "償還したTD",
-              },
-            ]
-          : []),
-      ]),
+    ...investments.flatMap((order) => [
+      {
+        id: order.id + ":deposit-out",
+        account: "deposit" as const,
+        direction: "out" as const,
+        amount: order.amountJpy,
+        unit: "JPY" as const,
+        label: "運用分のTDを確保",
+      },
+      ...(order.transferred
+        ? [
+            {
+              id: order.id + ":token-in",
+              account: "token" as const,
+              direction: "in" as const,
+              amount: order.usdcUnits,
+              unit: "USDC" as const,
+              label: "銀行からUSDC受取",
+            },
+          ]
+        : []),
+      ...(order.supplied
+        ? [
+            {
+              id: order.id + ":token-deposit",
+              account: "token" as const,
+              direction: "out" as const,
+              amount: order.usdcUnits,
+              unit: "USDC" as const,
+              label: "Aaveへ預入",
+            },
+            {
+              id: order.id + ":aave-in",
+              account: "aave" as const,
+              direction: "in" as const,
+              amount: order.usdcUnits,
+              unit: "USDC" as const,
+              label: "Aaveへ預入",
+            },
+          ]
+        : []),
+      ...(redemptions.includes(order.id)
+        ? [
+            {
+              id: order.id + ":aave-out",
+              account: "aave" as const,
+              direction: "out" as const,
+              amount: order.usdcUnits,
+              unit: "USDC" as const,
+              label: "Aaveから引出し",
+            },
+            {
+              id: order.id + ":token-withdraw",
+              account: "token" as const,
+              direction: "in" as const,
+              amount: order.usdcUnits,
+              unit: "USDC" as const,
+              label: "Aaveから引出し",
+            },
+            {
+              id: order.id + ":token-out",
+              account: "token" as const,
+              direction: "out" as const,
+              amount: order.usdcUnits,
+              unit: "USDC" as const,
+              label: "銀行へUSDC返却",
+            },
+            {
+              id: order.id + ":deposit-in",
+              account: "deposit" as const,
+              direction: "in" as const,
+              amount: order.amountJpy,
+              unit: "JPY" as const,
+              label: "償還したTD",
+            },
+          ]
+        : []),
+    ]),
   ];
   return {
     initialized: true,
@@ -211,10 +274,12 @@ export async function dashboard() {
     recipientTd,
     locked,
     upcoming: all<Invoice>("invoices").filter((i) => i.status !== "paid"),
-    recent: all<Run>("runs").slice(-3).reverse(),
+    recent: runs.slice(-3).reverse(),
+    investmentProgress,
     movements: movements.reverse(),
     publicWallet: walletInfo(customerAccountId),
-    ...(s.publicMode === "sepolia" ? await balances() : {}),
+    looseUsdc: "0",
+    ...publicBalances,
     mode: s.publicMode ?? "stub",
   };
 }

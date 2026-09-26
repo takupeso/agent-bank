@@ -168,6 +168,9 @@ export function WorldApproval({
     <section className="panel approval-policy" aria-label="World承認">
       <h2>この内容を承認</h2>
       <p>銀行が保存した対象と条件を確認してください。承認後に反映されます。</p>
+      {c?.id === "investment" && c.enabled && (
+        <p>承認すると、条件内の余力をAaveへ預け入れます。</p>
+      )}
       {policy && (
         <div className="card">
           <p>
@@ -288,11 +291,15 @@ export function WorldApproval({
                 finishing.current = true;
                 setBusy(true);
                 try {
-                  await apiPost("/api/world", {
-                    action: "verify",
-                    id: challenge.id,
-                    proof,
-                  });
+                  await apiPost(
+                    "/api/world",
+                    {
+                      action: "verify",
+                      id: challenge.id,
+                      proof,
+                    },
+                    120000,
+                  );
                   if (attempt !== generation.current) return;
                   completed.current = true;
                   setOpen(false);
@@ -300,7 +307,7 @@ export function WorldApproval({
                 } catch (e) {
                   if (attempt === generation.current)
                     setError(
-                      "設定を反映できませんでした。新しい確認を始めてください。",
+                      "結果を確認できませんでした。チャットと実行記録を確認してください。",
                     );
                   throw e;
                 } finally {
@@ -340,10 +347,14 @@ export function WorldApproval({
                 setBusy(true);
                 setError("");
                 try {
-                  await apiPost("/api/demo/approvals", {
-                    action: "confirm",
-                    id: demo.id,
-                  });
+                  await apiPost(
+                    "/api/demo/approvals",
+                    {
+                      action: "confirm",
+                      id: demo.id,
+                    },
+                    120000,
+                  );
                   if (attempt !== generation.current) return;
                   completed.current = true;
                   await onApproved();
@@ -354,7 +365,11 @@ export function WorldApproval({
                 }
               }}
             >
-              この内容をデモ承認
+              {busy
+                ? c?.id === "investment" && c.enabled
+                  ? "承認・運用開始中…"
+                  : "承認中…"
+                : "この内容をデモ承認"}
             </button>
           </>
         )}

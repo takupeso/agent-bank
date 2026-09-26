@@ -48,9 +48,11 @@ export async function approveApi(
   const { id } = await begun.json();
   const completed = await request.post("/api/demo/approvals", {
     data: { action: "confirm", id },
+    timeout: 120000,
     headers: { Origin: origin },
   });
   expect(completed.ok()).toBeTruthy();
+  return completed.json();
 }
 export async function openDemoActions(page: Page) {
   const actions = page.locator("details.agent-tools");

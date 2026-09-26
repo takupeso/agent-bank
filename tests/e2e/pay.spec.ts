@@ -8,6 +8,7 @@ test("due date pays once with receipt and current monthly usage", async ({
   await expect(page.getByText("¥1,000,000", { exact: true })).toBeVisible();
   await page.goto("/chat");
   await openDemoActions(page);
+  await openDemoActions(page);
   await page
     .getByRole("button", {
       name: "サンプルメールの閲覧を許可して確認",
@@ -36,6 +37,7 @@ test("due date pays once with receipt and current monthly usage", async ({
   ).toBeVisible();
   await page.goto("/chat");
   await openDemoActions(page);
+  await openDemoActions(page);
   await page
     .getByRole("button", {
       name: "そうしてください（支払い設定）",
@@ -51,6 +53,7 @@ test("due date pays once with receipt and current monthly usage", async ({
   await expect(page.getByText("支払い予定", { exact: true })).toHaveCount(2);
   await page.goto("/chat");
   await openDemoActions(page);
+  await openDemoActions(page);
   await page.getByRole("button", { name: "デモ：支払期日を迎える" }).click();
   await expect(
     page.getByText("アオバデザインへの¥200,000の支払いが完了しました。", {
@@ -60,9 +63,13 @@ test("due date pays once with receipt and current monthly usage", async ({
   const first = await (await page.request.get("/api/dashboard")).json();
   expect(first.td).toBe("800000");
   expect(first.recipientTd).toBe("200000");
+  await openDemoActions(page);
   await page.getByRole("button", { name: "デモ：支払期日を迎える" }).click();
   await expect(
-    page.getByRole("button", { name: "デモ：支払期日を迎える" }),
+    page.getByRole("button", {
+      name: "デモ：支払期日を迎える",
+      includeHidden: true,
+    }),
   ).toBeEnabled();
   const second = await (await page.request.get("/api/dashboard")).json();
   expect(second.td).toBe("800000");

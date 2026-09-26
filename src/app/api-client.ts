@@ -5,10 +5,10 @@ export async function apiFetch(input: string, init?: RequestInit) {
     window.dispatchEvent(new Event("agent-bank:session-expired"));
   return response;
 }
-export async function apiPost(path: string, body: object) {
+export async function apiPost(path: string, body: object, timeoutMs = 30000) {
   const response = await apiFetch(path, {
     method: "POST",
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(timeoutMs),
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });

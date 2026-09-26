@@ -1,8 +1,25 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { WorldWidget } from "./world-widget";
 import { apiPost } from "./api-client";
 import type { Challenge, WorldStatus } from "./world-approval";
+const LogoutContext = createContext<{
+  logout: () => Promise<void>;
+  busy: boolean;
+  error: string;
+} | null>(null);
+export function LogoutButton() {
+  const auth = useContext(LogoutContext);
+  if (!auth) return null;
+  return (
+    <div className="sidebar-logout">
+      <button disabled={auth.busy} onClick={() => void auth.logout()}>
+        ログアウト
+      </button>
+      {auth.error && <p role="alert">{auth.error}</p>}
+    </div>
+  );
+}
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const generation = useRef(0);
   const completed = useRef(false);
@@ -90,32 +107,24 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       setBusy(false);
     }
   }
+  async function logout() {
+    setBusy(true);
+    setError("");
+    try {
+      await apiPost("/api/auth/logout", {});
+      generation.current++;
+      setAuthenticated(false);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
   if (authenticated)
     return (
-      <>
-        <div className="auth-banner">
-          <span>
-            {world?.authMode === "local-demo"
-              ? "ローカルデモ：World本人確認を省略可能"
-              : "Worldでログイン済み"}
-          </span>
-          <button
-            onClick={async () => {
-              try {
-                await apiPost("/api/auth/logout", {});
-                generation.current++;
-                setAuthenticated(false);
-              } catch (e) {
-                setError(String(e));
-              }
-            }}
-          >
-            ログアウト
-          </button>
-          {error && <p role="alert">{error}</p>}
-        </div>
+      <LogoutContext.Provider value={{ logout, busy, error }}>
         {children}
-      </>
+      </LogoutContext.Provider>
     );
   return (
     <main id="main" className="auth-screen">
@@ -125,9 +134,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         {!ready && <p>認証設定を確認中…</p>}
         {world && (
           <>
-            {world.authMode === "local-demo" && (
-              <p className="badge">ローカルデモ：World本人確認を省略可能</p>
-            )}
             {!world.configured && (
               <p>Worldが未設定です。通常モードではWorldの設定が必要です。</p>
             )}

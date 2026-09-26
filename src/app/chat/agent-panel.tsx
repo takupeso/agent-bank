@@ -3,7 +3,7 @@ import { apiFetch } from "../api-client";
 import { WorldApproval, type WorldRequest } from "../world-approval";
 import { DemoEvent, RunDetails } from "./demo-event";
 import { Conditions, ProposalCard } from "./rule-card";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type {
   Message,
   Invoice,
@@ -13,6 +13,8 @@ import type {
   Run,
 } from "@/shared/domain";
 export function AgentPanel() {
+  const conversation = useRef<HTMLElement>(null);
+  const tools = useRef<HTMLDetailsElement>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
   const [pendingText, setPendingText] = useState("");
@@ -27,6 +29,18 @@ export function AgentPanel() {
       if (r.ok) setMessages(await r.json());
     });
   }, []);
+  useLayoutEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const container = conversation.current;
+      container?.scrollTo({
+        top: container.scrollHeight,
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [messages, pendingText]);
   async function send(value: string) {
     const proposalId = (
       messages.filter((m) => m.kind === "proposal").at(-1)?.data?.proposal as
@@ -92,15 +106,11 @@ export function AgentPanel() {
           <p>依頼や確認をいつでも送れます</p>
         </div>
       </header>
-      <section className="agent-conversation" aria-live="polite">
-        {!messages.length && (
-          <div className="chat-welcome">
-            <h2>まずは、請求書の確認から。</h2>
-            <p>
-              サンプルメールの閲覧を許可すると、Agentが請求書を読み取り、支払い条件を提案します。
-            </p>
-          </div>
-        )}
+      <section
+        ref={conversation}
+        className="agent-conversation"
+        aria-live="polite"
+      >
         {messages.map((m) => (
           <article className={"message " + m.role} key={m.id}>
             <small>{m.role === "user" ? "あなた" : "Agent"}</small>
@@ -180,9 +190,20 @@ export function AgentPanel() {
           </article>
         )}
       </section>
-      <details className="agent-tools">
+      <details ref={tools} className="agent-tools">
         <summary>デモ操作とよく使う依頼</summary>
-        <div className="quick-actions">
+        <div
+          className="quick-actions"
+          onClick={(event) => {
+            if (
+              (event.target as HTMLElement).closest("button") &&
+              tools.current
+            ) {
+              tools.current.open = false;
+              setError("");
+            }
+          }}
+        >
           <button
             disabled={busy || !!approval}
             onClick={() => send("サンプルメールの閲覧を許可して確認して")}
@@ -196,15 +217,14 @@ export function AgentPanel() {
             そうしてください（支払い設定）
           </button>
           <DemoEvent
+            onError={setError}
             type="due_date_reached"
             label="デモ：支払期日を迎える"
             onComplete={() => {
+              window.dispatchEvent(new Event("agent-bank:invoices-updated"));
               apiFetch("/api/chat/messages").then(async (r) => {
                 if (r.ok) {
                   setMessages(await r.json());
-                  window.dispatchEvent(
-                    new Event("agent-bank:invoices-updated"),
-                  );
                 }
               });
             }}
@@ -224,15 +244,14 @@ export function AgentPanel() {
             そうしてください（運用設定）
           </button>
           <DemoEvent
+            onError={setError}
             type="surplus_check"
             label="デモ：余力をチェック"
             onComplete={() => {
+              window.dispatchEvent(new Event("agent-bank:invoices-updated"));
               apiFetch("/api/chat/messages").then(async (r) => {
                 if (r.ok) {
                   setMessages(await r.json());
-                  window.dispatchEvent(
-                    new Event("agent-bank:invoices-updated"),
-                  );
                 }
               });
             }}
@@ -276,12 +295,12 @@ export function AgentPanel() {
             if (completed.input.purpose === "delegation")
               await send(completed.text);
             else {
+              window.dispatchEvent(new Event("agent-bank:invoices-updated"));
+              window.dispatchEvent(new Event("agent-bank:rules-updated"));
               const response = await apiFetch("/api/chat/messages");
               if (!response.ok)
                 throw new Error("最新の会話を取得できませんでした。");
               setMessages(await response.json());
-              window.dispatchEvent(new Event("agent-bank:invoices-updated"));
-              window.dispatchEvent(new Event("agent-bank:rules-updated"));
             }
           }}
         />

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { aiMode } from "@/integrations/ai";
-import { AuthGate } from "./auth-gate";
+import { AuthGate, LogoutButton } from "./auth-gate";
 import "./style.css";
 import { Navigation } from "./navigation";
 import { AgentPanel } from "./chat/agent-panel";
@@ -26,6 +26,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <span className="brand-caption">あなたの条件で動く銀行</span>
               </Link>
               <Navigation />
+              <LogoutButton />
               <small>
                 TD：ローカルAnvil
                 <br />

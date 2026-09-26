@@ -9,6 +9,7 @@ test("replay complete demo twice and inspect all five screens", async ({
     await expect(page.getByText("¥1,000,000", { exact: true })).toBeVisible();
     await page.goto("/chat");
     await openDemoActions(page);
+    await openDemoActions(page);
     await page
       .getByRole("button", {
         name: "サンプルメールの閲覧を許可して確認",
@@ -16,6 +17,7 @@ test("replay complete demo twice and inspect all five screens", async ({
       })
       .click();
     await demoApprove(page);
+    await openDemoActions(page);
     await page
       .getByRole("button", {
         name: "そうしてください（支払い設定）",
@@ -24,6 +26,7 @@ test("replay complete demo twice and inspect all five screens", async ({
       .click();
     await demoApprove(page);
     await expect(page.getByText("承認時の設定", { exact: true })).toBeVisible();
+    await openDemoActions(page);
     await page.getByRole("button", { name: "デモ：支払期日を迎える" }).click();
     await expect(
       page.getByText("アオバデザインへの¥200,000の支払いが完了しました。"),
@@ -37,9 +40,11 @@ test("replay complete demo twice and inspect all five screens", async ({
     });
     await page.goto("/chat");
     await openDemoActions(page);
+    await openDemoActions(page);
     await page
       .getByRole("button", { name: "余力を運用したい", exact: true })
       .click();
+    await openDemoActions(page);
     await page
       .getByRole("button", {
         name: "そうしてください（運用設定）",
@@ -49,10 +54,9 @@ test("replay complete demo twice and inspect all five screens", async ({
     await demoApprove(page);
     await expect(
       page.getByText(
-        "余力の自動運用を設定しました。必要資金を残して運用します。",
+        "余力の自動運用を設定しました。承認条件を再確認して運用を開始します。",
       ),
     ).toBeVisible();
-    await page.getByRole("button", { name: "デモ：余力をチェック" }).click();
     await expect(
       page.getByText(
         "¥400,000を別段口座にlockし、2,500擬似USDC相当を模擬運用しました。",
@@ -71,6 +75,7 @@ test("replay complete demo twice and inspect all five screens", async ({
       fullPage: true,
     });
     await page.goto("/chat");
+    await openDemoActions(page);
     await openDemoActions(page);
     await page
       .getByRole("button", { name: "運用分を全部TDに戻して", exact: true })

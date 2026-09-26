@@ -9,6 +9,7 @@ test("mail evidence is visible before consent and invoices wait for consent", as
   await expect(page.getByText("¥1,000,000", { exact: true })).toBeVisible();
   await page.goto("/chat");
   await openDemoActions(page);
+  await openDemoActions(page);
   await page
     .getByRole("button", {
       name: "サンプルメールの閲覧を許可して確認",

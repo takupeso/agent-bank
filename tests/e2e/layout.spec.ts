@@ -9,7 +9,7 @@ test("home uses three panes and guided demo route is removed", async ({
   await expect(
     page.getByRole("heading", { name: "口座", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("口座A · 利用可能な残高")).toBeVisible();
+  await expect(page.getByText("口座A", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("complementary", { name: "Agentチャット" }),
   ).toBeVisible();

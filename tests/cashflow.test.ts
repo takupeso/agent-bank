@@ -54,8 +54,10 @@ test("confirmed cloud invoice replaces forecast without double counting", () => 
   assert.equal(f.predictedJpy, "0");
   assert.equal(f.reserveJpy, "400000");
 });
-test("USDC display retains smallest units without floating point", async () => {
+test("USDC display floors fractional units without floating point", async () => {
   const { formatUsdc } = await import("../src/shared/format");
-  assert.equal(formatUsdc("6250"), "0.00625");
+  assert.equal(formatUsdc("6250"), "0");
+  assert.equal(formatUsdc("2500000300"), "2,500");
+  assert.equal(formatUsdc("9007199254740993999999"), "9,007,199,254,740,993");
   assert.equal(formatUsdc("2500000000"), "2,500");
 });

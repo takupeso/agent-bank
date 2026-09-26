@@ -74,14 +74,18 @@ export async function proposeInvestment(principal: Principal) {
       maxPaymentJpy: "0",
       monthlyLimitJpy: "0",
       safetyBufferJpy: "100000",
-      maxInvestmentJpy: maximum,
+      maxInvestmentJpy: snapshot.investJpy,
       minimumBalanceJpy: "0",
       payAt: "dueDate",
     },
   });
   return { proposal, snapshot };
 }
-export async function invest(principal: Principal, requestId: string) {
+export async function invest(
+  principal: Principal,
+  requestId: string,
+  approvedRule?: Pick<Rule, "version" | "consentId">,
+) {
   assertScope(principal, "mail");
   const permittedMail = allowedMailIds(principal);
   if (all<Invoice>("invoices").some((i) => !permittedMail.includes(i.emailId)))
@@ -89,6 +93,12 @@ export async function invest(principal: Principal, requestId: string) {
   const delegation = assertScope(principal, "investment");
   const initialRule = get<Rule>("rules", "investment");
   if (!initialRule?.enabled) throw new Error("No authorized rule");
+  if (
+    approvedRule &&
+    (initialRule.version !== approvedRule.version ||
+      initialRule.consentId !== approvedRule.consentId)
+  )
+    throw new Error("Approved investment rule changed");
   assertRuleApproval(initialRule);
   const guard = () => {
     assertScope(principal, "mail");

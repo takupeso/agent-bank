@@ -1,3 +1,4 @@
+import { activateApprovedInvestment } from "@/features/world/activation";
 import { z } from "zod";
 import { checkRequest, failure } from "@/server/http";
 import { requirePrincipal } from "@/server/auth";
@@ -21,7 +22,9 @@ export async function POST(req: Request) {
         ? beginDemoApproval(b.input, principal)
         : b.action === "cancel"
           ? await cancelDemoApproval(b.id, principal)
-          : await completeDemoApproval(b.id, principal),
+          : await activateApprovedInvestment(
+              await completeDemoApproval(b.id, principal),
+            ),
     );
   } catch (e) {
     return failure(e);

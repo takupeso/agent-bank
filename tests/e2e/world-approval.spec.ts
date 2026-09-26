@@ -44,6 +44,7 @@ test("World unavailable permits explicit scoped demo consent; OK alone changes n
   await page.getByRole("button", { name: /デモを(初期化|リセット)/ }).click();
   await expect(page.getByText("¥1,000,000", { exact: true })).toBeVisible();
   await openDemoActions(page);
+  await openDemoActions(page);
   await page
     .getByRole("button", {
       name: "サンプルメールの閲覧を許可して確認",
@@ -61,6 +62,7 @@ test("World unavailable permits explicit scoped demo consent; OK alone changes n
   await expect(panel.getByText(/対象Agent：bank-agent/)).toBeVisible();
   await panel.getByRole("button", { name: "この内容をデモ承認" }).click();
   await expect(page.getByText("自動支払いの設定案")).toBeVisible();
+  await openDemoActions(page);
   await page
     .getByRole("button", {
       name: "そうしてください（支払い設定）",
@@ -84,6 +86,7 @@ test("World unavailable permits explicit scoped demo consent; OK alone changes n
   });
   expect(replay.status()).toBe(409);
   expect(await (await page.request.get("/api/rules")).json()).toEqual([]);
+  await openDemoActions(page);
   await page
     .getByRole("button", {
       name: "そうしてください（支払い設定）",
@@ -176,6 +179,7 @@ test("World begin failure still offers explicit demo approval", async ({
         json: { error: "Verifier unavailable" },
       });
   });
+  await openDemoActions(page);
   await openDemoActions(page);
   await page
     .getByRole("button", {
