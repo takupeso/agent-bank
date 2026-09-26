@@ -300,14 +300,6 @@ details[open] {
 .brand-logo {
   display: block;
 }
-.brand-caption {
-  flex-basis: 100%;
-  margin: 8px 0 0 44px;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0;
-  color: var(--side-muted);
-}
 .sidebar nav {
   display: grid;
   gap: 4px;
@@ -1348,7 +1340,6 @@ header p {
     height: auto;
     padding: 16px 16px 0;
   }
-  .brand-caption,
   .sidebar-logout {
     display: none;
   }

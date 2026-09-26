@@ -23,7 +23,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <BrandLogo size={36} tone="dark" />
                 </span>
                 Agent Bank
-                <span className="brand-caption">Banking on your terms</span>
               </Link>
               <Navigation />
               <LogoutButton />
