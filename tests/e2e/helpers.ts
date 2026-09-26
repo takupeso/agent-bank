@@ -1,3 +1,5 @@
+import { conditions } from "../../src/shared/rule-conditions";
+import type { Rule } from "../../src/shared/domain";
 import {
   test as base,
   expect,
@@ -93,4 +95,38 @@ export async function resetDemo(page: Page) {
   const drawer = page.getByRole("dialog", { name: "Demo controls" });
   await drawer.getByRole("button", { name: /(Initialize|Reset) demo/ }).click();
   await expect(drawer).not.toBeVisible({ timeout: 60000 });
+}
+export async function ruleFromApi(page: Page, id: Rule["id"]) {
+  const response = await page.request.get("/api/rules");
+  expect(response.ok()).toBeTruthy();
+  const rules: (Rule & { status: string })[] = await response.json();
+  const rule = rules.find((rule) => rule.id === id);
+  expect(rule).toBeDefined();
+  return rule!;
+}
+export async function changeRuleViaApi(
+  page: Page,
+  id: Rule["id"],
+  patch: Partial<Rule>,
+) {
+  const rule = await ruleFromApi(page, id);
+  await approveApi(
+    page.request,
+    {
+      purpose: "change",
+      change: {
+        baseVersion: rule.version,
+        conditions: conditions.parse({ ...rule, ...patch }),
+      },
+    },
+    new URL(page.url()).origin,
+  );
+  return ruleFromApi(page, id);
+}
+export async function pauseRuleViaApi(page: Page, id: Rule["id"]) {
+  const response = await page.request.post(`/api/rules/${id}/disable`, {
+    data: {},
+  });
+  expect(response.ok()).toBeTruthy();
+  return ruleFromApi(page, id);
 }
