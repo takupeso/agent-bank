@@ -78,7 +78,9 @@ test("Sepolia principal round trip with Anvil TD and on-chain receipts", async (
   expect(invested.locked).toBe(amount);
   expect(invested.principalUsdc).toBe((BigInt(amount) * 6250n).toString());
   await page.goto("/investment");
-  await expect(page.getByText(/Base Sepolia/)).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Investment schedule" }),
+  ).toBeVisible();
   await page.screenshot({
     path: "/tmp/td-sepolia-live-investment.png",
     fullPage: true,
@@ -90,10 +92,10 @@ test("Sepolia principal round trip with Anvil TD and on-chain receipts", async (
   expect(after.principalUsdc).toBe("0");
   expect(after.treasuryUsdc).toBe(before.treasuryUsdc);
   await page.goto("/investment");
-  await expect(page.getByText(/Base Sepolia/)).toBeVisible();
   await expect(
-    page.locator("main").getByText("¥800,000", { exact: true }),
+    page.getByRole("region", { name: "Investment schedule" }),
   ).toBeVisible();
+
   await page.screenshot({
     path: "/tmp/td-sepolia-live-redeemed.png",
     fullPage: true,

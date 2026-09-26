@@ -41,6 +41,8 @@ test("invest surplus after explicit consent and preserve inventory", async ({
   expect(after.locked).toBe(data.locked);
   expect(after.treasuryUsdc).toBe(data.treasuryUsdc);
   await page.goto("/investment");
-  await expect(page.getByText("2,500 USDC", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Investment schedule" }),
+  ).toContainText("Invest ¥400,000 in Aave.");
   await page.screenshot({ path: "/tmp/td-bank-invest.png", fullPage: true });
 });

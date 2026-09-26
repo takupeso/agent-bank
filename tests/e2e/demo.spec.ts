@@ -32,7 +32,9 @@ test("replay complete demo twice and inspect all five screens", async ({
     });
     await page.goto("/chat");
     await page.goto("/investment");
-    await expect(page.getByText("2,500 USDC", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Investment schedule" }),
+    ).toContainText("Invest ¥400,000 in Aave.");
     await page.screenshot({
       path: `/tmp/td-demo-investment-${cycle}.png`,
       fullPage: true,
