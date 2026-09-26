@@ -54,9 +54,9 @@ pnpm auth agent .data/world-agent-credential
 
 Worldの実機接続結果は環境とフローに依存します。ローカルテストの成功をWorld Appでの動作確認として扱わないでください。
 
-## World ID for Agents（認証単独テスト）
+## World ID for Agents（エージェント接続）
 
-`/world-agents`は上記のIDKit連携とは独立した、公式イベント用OIDCサンドボックスへの接続確認画面です。認証だけでは銀行セッションやAgent権限を発行しません。認証成功後に口座接続へ進めます。
+`/world-agents`は銀行にログインした本人が、エージェントへの権限付与を確認する画面です。上記のIDKit連携とは独立した公式イベント用OIDCサンドボックスを使います。操作条件を確認してWorld認証を開始すると、銀行が条件を認証要求に紐づけて保存します。認証成功後は口座紐づけと権限発行を一括で行い、接続ファイルのダウンロード画面へ進みます。World認証だけで銀行セッションを発行することはありません。
 
 [Agents Portal](https://sandbox.auth.world.org/portal)でconfidential clientを作成し、認証方式を`client_secret_basic`、Redirect URIを`https://agent-bank-demo.barabara0224.workers.dev/api/world-agents/callback`に設定します。`.env.local`には`WORLD_AGENTS_CLIENT_ID`、`WORLD_AGENTS_CLIENT_SECRET`、`WORLD_AGENTS_REDIRECT_URI`を保存します。Cloudflare公開時は同名のWorker secretsとして設定してください。値を会話やGitへ貼り付けないでください。
 
@@ -67,9 +67,9 @@ Code + S256 PKCE、state、nonce、RS256署名、issuer、audience、期限、ac
 ## 外部エージェントの残高照会デモ
 
 1. 銀行画面でログインし、デモ口座を初期化します。
-2. `/world-agents`でWorld認証を完了し、`Continue to account connection`へ進みます。
-3. `Connect Account A with World`で、銀行ログイン済みの口座とWorld認証を紐づけます。Worldだけで既存口座へ入ることはできません。
-4. エージェント名と「残高照会のみ・15分間」を確認し、`Allow balance access for 15 minutes`を押します。
+2. `/world-agents`でエージェント名・対象口座・許可する操作・有効期間を確認します。
+3. `Verify with World and allow`を押し、World認証を完了します。取消・失敗・期限切れでは権限を発行しません。
+4. 銀行側が認証結果と保存した条件を検証し、自動で接続を確定します。権限は1回だけ発行され、接続済み一覧や追加の口座接続ボタンは表示しません。
 5. 接続ファイルをダウンロードし、選んだエージェントの秘密情報保管先へ渡します。会話やGitへ貼り付けないでください。接続ファイルはBearer credentialを含み、再表示できません。
 6. 外部エージェントから `node scripts/agent-balance.mjs /path/to/agent-bank-connection.json` を実行します。`GET /api/external-agent/balance`からTDの利用可能残高とlock残高を返します。
 
@@ -79,7 +79,7 @@ Cloudflareではcredential内のルーティングIDで同じサンドボック�
 
 ## 外部エージェントによる預金への戻し入れ
 
-運用中の口座では、委任画面の `Also allow Aave → Token account → Deposit account` を選べます。画面に出た元本総額・運用件数を確認して許可すると、対象の運用分を元のAccount Aへ戻す1件の償還依頼を銀行が保存します。金額・対象が承認表示から変わっていれば再確認が必要です。許可は最大5分間で、残高照会専用の接続情報には償還権限を追加しません。
+運用中の口座では、接続内容の確認画面で `Allow deposit and token account operations` を選べます。この許可で実行できる資金操作は、接続開始時の運用分を元のAccount Aへ戻す1件の償還です。銀行は対象の運用分を認証要求に紐づけ、認証中に金額・対象が変わった場合は接続を確定せず、再確認を求めます。許可は最大5分間で、残高照会専用の接続情報には償還権限を追加しません。
 
 外部Agentはダウンロードした接続情報を使って実行します。
 
@@ -91,3 +91,7 @@ node scripts/agent-redeem.mjs /path/to/agent-bank-connection.json --status
 実行APIは `POST /api/external-agent/redemptions`、bodyは `{"action":"redeem-approved"}`、状態確認は同じパスのGETです。銀行側の既存償還処理がAaveからToken accountへの引出し、銀行へのtoken返却、元の預金口座へのTD解除を検証します。Agentは金額・送金先・別の償還依頼を指定できません。取消・失効の検査は実行段階ごとにも行います。通信が途切れた場合は状態を確認してください。失敗途中の処理を新しい許可で無条件に再実行しないでください。
 
 公開デモはAaveのstub＋ローカルAnvilです。Sepolia接続では既存adapterを使いますが、実Aaveでの外部Agent実行は未検証です。元本を戻す既存仕様を引き継ぎ、利息相当のAave保有分はSepolia側に残ります。
+
+## ローカルでのデザイン確認
+
+開発サーバーの `/world-agents?preview=1` で、接続内容の確認・模擬認証・ファイルダウンロードを確認できます。`Complete preview verification` で成功経路、`Cancel verification` で取消経路へ進みます。開発環境のloopback接続でのみ有効で、銀行APIを呼び出さず、接続ファイルにも無効な確認用tokenを使います。通常URLやproduction buildでは認証を省略しません。

@@ -23,7 +23,7 @@ export const apiPolicy: ReadonlyArray<{
   { method: "GET", path: /^\/api\/world-agents\/connection$/, role: "human" },
   {
     method: "POST",
-    path: /^\/api\/world-agents\/(connect|grant|revoke)$/,
+    path: /^\/api\/world-agents\/(connect|grant|revoke|begin-connection|complete-connection)$/,
     role: "human",
   },
   { method: "GET", path: /^\/api\/external-agent\/balance$/, role: "agent" },

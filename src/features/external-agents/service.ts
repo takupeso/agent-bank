@@ -11,7 +11,7 @@ import {
   AuthorizationError,
   type Principal,
 } from "../../server/auth";
-import { verifiedWorldCheck } from "../world-agents/service";
+import { beginWorldCheck, verifiedWorldCheck } from "../world-agents/service";
 import { worldAgentsConfig } from "../../integrations/world-agents";
 import { balance } from "../../integrations/td-ledger";
 
@@ -40,10 +40,113 @@ type Grant = Link & {
   scope: "balance:read" | "balance:read redemption:execute";
   redemptionRequestId?: string;
 };
+type ConnectionRequest = {
+  requestId: string;
+  accountId: string;
+  generation: number;
+  mode: string;
+  instanceId: string;
+  expiresAt: number;
+  name: string;
+  redemptionHash?: string;
+};
 const configHash = () => hashSecret(JSON.stringify(worldAgentsConfig()));
 function tables() {
   sqlite.exec(`CREATE TABLE IF NOT EXISTS external_world_accounts (account_id TEXT PRIMARY KEY, data TEXT NOT NULL);
-    CREATE TABLE IF NOT EXISTS external_agent_grants (id TEXT PRIMARY KEY, hash TEXT UNIQUE NOT NULL, proof TEXT UNIQUE NOT NULL, data TEXT NOT NULL);`);
+    CREATE TABLE IF NOT EXISTS external_agent_grants (id TEXT PRIMARY KEY, hash TEXT UNIQUE NOT NULL, proof TEXT UNIQUE NOT NULL, data TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS external_agent_connection_requests (browser TEXT PRIMARY KEY, data TEXT NOT NULL);`);
+}
+export async function beginAgentConnection(
+  p: Principal,
+  browser: string,
+  input: unknown,
+) {
+  requirePrincipal(p, "human");
+  const selection = z
+    .object({
+      name: z.string().trim().min(1).max(60),
+      redemptionHash: z
+        .string()
+        .regex(/^[a-f0-9]{64}$/)
+        .optional(),
+    })
+    .strict()
+    .parse(input);
+  const bank = current();
+  if (!bank) throw new AuthorizationError(409);
+  if (
+    selection.redemptionHash &&
+    redemptionQuote()?.hash !== selection.redemptionHash
+  )
+    throw new AuthorizationError(409);
+  const expiresAt = Date.now() + 300_000;
+  const url = await beginWorldCheck(browser);
+  const request: ConnectionRequest = {
+    ...selection,
+    requestId: url.searchParams.get("state")!,
+    accountId: p.accountId,
+    generation: p.generation,
+    mode: p.authMode,
+    instanceId: bank.id,
+    expiresAt,
+  };
+  tables();
+  sqlite
+    .prepare(
+      "INSERT INTO external_agent_connection_requests VALUES(?,?) ON CONFLICT(browser) DO UPDATE SET data=excluded.data",
+    )
+    .run(hashSecret(browser), JSON.stringify(request));
+  return url;
+}
+function connectionRequest(browser: string): ConnectionRequest | undefined {
+  tables();
+  const row = sqlite
+    .prepare(
+      "SELECT data FROM external_agent_connection_requests WHERE browser=?",
+    )
+    .get(hashSecret(browser)) as { data: string } | undefined;
+  return row && JSON.parse(row.data);
+}
+export function hasPendingAgentConnection(browser: string) {
+  const request = connectionRequest(browser);
+  return Boolean(
+    request &&
+      request.expiresAt > Date.now() &&
+      request.requestId === verifiedWorldCheck(browser).requestId,
+  );
+}
+export function completeAgentConnection(
+  p: Principal,
+  browser: string,
+  routingId?: string,
+) {
+  requirePrincipal(p, "human");
+  return sqlite.transaction(() => {
+    const request = connectionRequest(browser);
+    const proof = verifiedWorldCheck(browser);
+    if (
+      !request ||
+      request.requestId !== proof.requestId ||
+      request.expiresAt <= Date.now() ||
+      request.accountId !== p.accountId ||
+      request.generation !== p.generation ||
+      request.mode !== p.authMode ||
+      request.instanceId !== current()?.id
+    )
+      throw new AuthorizationError(403);
+    connectAccount(p, browser);
+    const credential = grantBalance(
+      p,
+      browser,
+      request.name,
+      routingId,
+      request.redemptionHash,
+    );
+    sqlite
+      .prepare("DELETE FROM external_agent_connection_requests WHERE browser=?")
+      .run(hashSecret(browser));
+    return credential;
+  })();
 }
 function linked(accountId: string): Link | undefined {
   tables();

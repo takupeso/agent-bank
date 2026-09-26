@@ -324,3 +324,232 @@ test("external agent without permission cannot read the account balance", async 
   assert.equal(response.status, 401);
   assert.equal(read.mock.callCount(), 0);
 });
+
+function connectionPost(action: string, humanToken: string, body: object = {}) {
+  return new Request(`https://bank.example/api/world-agents/${action}`, {
+    method: "POST",
+    headers: {
+      host: "bank.example",
+      origin: "https://bank.example",
+      "content-type": "application/json",
+      cookie: `bank_session=${humanToken}; world_agents_browser=${owner}`,
+    },
+    body: JSON.stringify(body),
+  });
+}
+function grantCount() {
+  return (
+    sqlite.prepare("SELECT COUNT(*) AS n FROM external_agent_grants").get() as {
+      n: number;
+    }
+  ).n;
+}
+
+test("connection approval starts before World and completes once after the callback", async () => {
+  const { human } = bankFixture();
+  const started = await route.POST(
+    connectionPost("begin-connection", human.token, {
+      name: "My approved agent",
+    }),
+  );
+  assert.equal(started.status, 200);
+  authorization = new URL((await started.json()).authorizationUrl);
+  assert.equal(authorization.searchParams.get("max_age"), "0");
+  assert.equal(grantCount(), 0);
+  const early = await route.POST(
+    connectionPost("complete-connection", human.token),
+  );
+  assert.notEqual(early.status, 200);
+  assert.equal(grantCount(), 0);
+  const result = await route.GET(
+    new Request(callback(), {
+      headers: { cookie: `world_agents_browser=${owner}` },
+    }),
+  );
+  assert.equal(result.headers.get("location"), "/world-agents/connect");
+  assert.equal(grantCount(), 0);
+  const tampered = await route.POST(
+    connectionPost("complete-connection", human.token, {
+      name: "Changed",
+      redemptionHash: "a".repeat(64),
+    }),
+  );
+  assert.equal(tampered.status, 400);
+  assert.equal(grantCount(), 0);
+  const completed = await route.POST(
+    connectionPost("complete-connection", human.token),
+  );
+  assert.equal(completed.status, 200);
+  const credential = await completed.json();
+  assert.equal(credential.scope, "balance:read");
+  assert.match(credential.token, external.externalTokenPattern);
+  const stored = sqlite
+    .prepare("SELECT data FROM external_agent_grants")
+    .get() as { data: string };
+  assert.equal(JSON.parse(stored.data).name, "My approved agent");
+  assert.equal(stored.data.includes(credential.token), false);
+  assert.equal(
+    (await route.POST(connectionPost("complete-connection", human.token)))
+      .status,
+    403,
+  );
+  assert.equal(grantCount(), 1);
+});
+
+test("cancelled, expired, denied and invalid World verification never issue connection credentials", async () => {
+  for (const outcome of [
+    "cancelled",
+    "expired",
+    "denied",
+    "invalid-signature",
+  ] as const) {
+    const { p, human } = bankFixture();
+    invalidSignature = false;
+    authorization = await external.beginAgentConnection(p, owner, {
+      name: "Demo AI",
+    });
+    if (outcome === "cancelled") service.cancelWorldCheck(owner);
+    if (outcome === "expired")
+      sqlite
+        .prepare(
+          "UPDATE world_agent_checks SET data=json_set(data,'$.expiresAt',0)",
+        )
+        .run();
+    if (outcome === "invalid-signature") invalidSignature = true;
+    const url = callback(
+      outcome === "denied" ? { error: "access_denied" } : {},
+    );
+    if (outcome === "denied") url.searchParams.delete("code");
+    const result = await route.GET(
+      new Request(url, {
+        headers: { cookie: `world_agents_browser=${owner}` },
+      }),
+    );
+    assert.equal(result.headers.get("location"), "/world-agents");
+    assert.notEqual(
+      (await route.POST(connectionPost("complete-connection", human.token)))
+        .status,
+      200,
+    );
+    assert.equal(grantCount(), 0);
+    assert.equal(
+      (
+        sqlite
+          .prepare("SELECT COUNT(*) AS n FROM external_world_accounts")
+          .get() as { n: number }
+      ).n,
+      0,
+    );
+  }
+});
+
+test("pending selection cannot use an unrelated verification or survive an account reset", async () => {
+  const { p } = bankFixture();
+  authorization = await external.beginAgentConnection(p, owner, {
+    name: "Demo AI",
+  });
+  await begin();
+  await service.completeWorldCheck(owner, callback());
+  assert.throws(() => external.completeAgentConnection(p, owner));
+  assert.equal(grantCount(), 0);
+  authorization = await external.beginAgentConnection(p, owner, {
+    name: "Demo AI",
+  });
+  await service.completeWorldCheck(owner, callback());
+  sqlite.prepare("UPDATE control SET active_instance=NULL WHERE id=1").run();
+  assert.throws(() => external.completeAgentConnection(p, owner));
+  assert.equal(grantCount(), 0);
+});
+
+test("expired connection selection is rejected even with a fresh verified result", async () => {
+  const { p } = bankFixture();
+  authorization = await external.beginAgentConnection(p, owner, {
+    name: "Demo AI",
+  });
+  await service.completeWorldCheck(owner, callback());
+  sqlite
+    .prepare(
+      "UPDATE external_agent_connection_requests SET data=json_set(data,'$.expiresAt',0)",
+    )
+    .run();
+  assert.throws(() => external.completeAgentConnection(p, owner));
+  assert.equal(grantCount(), 0);
+});
+
+test("connection requests require bank login and cannot approve an unavailable redemption", async () => {
+  const { human } = bankFixture();
+  assert.equal(
+    (
+      await route.POST(
+        connectionPost("begin-connection", "invalid", { name: "Demo AI" }),
+      )
+    ).status,
+    401,
+  );
+  assert.equal(
+    (
+      await route.POST(
+        connectionPost("begin-connection", human.token, {
+          name: "Demo AI",
+          redemptionHash: "a".repeat(64),
+        }),
+      )
+    ).status,
+    409,
+  );
+  assert.equal(
+    (
+      await route.POST(
+        connectionPost("begin-connection", human.token, {
+          name: "Demo AI",
+          scope: "admin",
+        }),
+      )
+    ).status,
+    400,
+  );
+  assert.equal(grantCount(), 0);
+});
+
+test("operation approval binds selected positions and rolls back if they change during verification", async () => {
+  const records = await import("../src/server/records");
+  const { p } = bankFixture();
+  const order = {
+    id: "approved-position",
+    status: "invested",
+    amountJpy: "800000",
+  };
+  records.put("investment_orders", order);
+  const quote = external.connectionStatus(p, owner).redemptionQuote!;
+  authorization = await external.beginAgentConnection(p, owner, {
+    name: "Deposit agent",
+    redemptionHash: quote.hash,
+  });
+  await service.completeWorldCheck(owner, callback());
+  records.put("investment_orders", { ...order, amountJpy: "900000" });
+  assert.throws(() => external.completeAgentConnection(p, owner));
+  assert.equal(grantCount(), 0);
+  assert.equal(
+    (
+      sqlite
+        .prepare("SELECT COUNT(*) AS n FROM external_world_accounts")
+        .get() as { n: number }
+    ).n,
+    0,
+  );
+  assert.equal(records.all("redemption_requests").length, 0);
+  const updated = external.connectionStatus(p, owner).redemptionQuote!;
+  authorization = await external.beginAgentConnection(p, owner, {
+    name: "Deposit agent",
+    redemptionHash: updated.hash,
+  });
+  await service.completeWorldCheck(owner, callback());
+  const credential = external.completeAgentConnection(p, owner);
+  assert.equal(credential.scope, "balance:read redemption:execute");
+  assert.ok(credential.expiresAt <= Date.now() + 300000);
+  const requests = records.all<{ orders: { amountJpy: string }[] }>(
+    "redemption_requests",
+  );
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].orders[0].amountJpy, "900000");
+});
