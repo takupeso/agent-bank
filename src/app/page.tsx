@@ -141,10 +141,12 @@ export default function Home() {
           </p>
         </div>
         <div className="toolbar">
-          <span className="badge">
-            {data.mode === "sepolia" ? "Sepolia demo" : "Local demo"}
-            {data.profile === "ten-usdc" ? " · 10 USDC starter" : ""}
-          </span>
+          {(data.mode === "sepolia" || data.profile === "ten-usdc") && (
+            <span className="badge">
+              {data.mode === "sepolia" ? "Sepolia demo" : "Local demo"}
+              {data.profile === "ten-usdc" ? " · 10 USDC starter" : ""}
+            </span>
+          )}
           <button
             className="secondary"
             onClick={() => void reset()}

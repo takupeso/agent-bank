@@ -359,35 +359,8 @@ details[open] {
 .sidebar nav a[aria-current="page"] svg {
   stroke: #a5b4fc;
 }
-.sidebar-env {
-  display: grid;
-  gap: 8px;
-  margin-top: auto;
-  padding: 14px 8px 0;
-  border-top: 1px solid #ffffff14;
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--side-muted);
-}
-.sidebar-env span {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.sidebar-env i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #34d399;
-  box-shadow: 0 0 0 3px #34d39926;
-}
-.sidebar-env span:last-child {
-  font-size: 10px;
-  opacity: 0.8;
-}
 .sidebar-logout {
-  order: 1;
-  margin-top: 14px;
+  margin-top: auto;
 }
 .sidebar-logout button {
   width: 100%;
@@ -1559,7 +1532,6 @@ header p {
     padding: 16px 16px 0;
   }
   .brand-caption,
-  .sidebar-env,
   .sidebar-logout {
     display: none;
   }

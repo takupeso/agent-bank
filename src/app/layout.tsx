@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { aiMode } from "@/integrations/ai";
 import { AuthGate, LogoutButton } from "./auth-gate";
 import "./style.css";
 import { Navigation } from "./navigation";
@@ -27,17 +26,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </Link>
               <Navigation />
               <LogoutButton />
-              <small className="sidebar-env">
-                <span>
-                  <i aria-hidden="true" />
-                  TD · local Anvil
-                </span>
-                <span>
-                  <i aria-hidden="true" />
-                  AI · {aiMode() === "gemini" ? "Gemini" : "stub"}
-                </span>
-                <span>Asset connections are shown on each page</span>
-              </small>
             </aside>
             <main id="main">{children}</main>
             <AgentPanel />
