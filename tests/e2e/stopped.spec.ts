@@ -1,4 +1,9 @@
-import { runDemoEvent, sendChat } from "./helpers";
+import {
+  runDemoEvent,
+  sendChat,
+  pauseRuleViaApi,
+  changeRuleViaApi,
+} from "./helpers";
 import { test, expect, demoApprove } from "./helpers";
 test("stopped payment rule applies to unexecuted invoice and can resume", async ({
   page,
@@ -20,9 +25,10 @@ test("stopped payment rule applies to unexecuted invoice and can resume", async 
   await demoApprove(page);
   await expect(page.getByText("Approval", { exact: true })).toHaveCount(2);
   await page.goto("/rules");
-  await page.getByRole("tab", { name: "Deposit operations" }).click();
-  await page.getByRole("button", { name: "Pause" }).first().click();
-  await expect(page.getByText("Paused · Version 2")).toBeVisible();
+  expect(await pauseRuleViaApi(page, "payment")).toMatchObject({
+    version: 2,
+    status: "stopped",
+  });
   await page.goto("/chat");
 
   await runDemoEvent(page, "due_date_reached", false);
@@ -31,10 +37,9 @@ test("stopped payment rule applies to unexecuted invoice and can resume", async 
     "600000",
   );
   await page.goto("/rules");
-  await page.getByRole("tab", { name: "Deposit operations" }).click();
-  await page.getByRole("button", { name: "Enable" }).first().click();
-  await demoApprove(page);
-  await expect(page.getByText("Active · Version 3")).toBeVisible();
+  expect(
+    await changeRuleViaApi(page, "payment", { enabled: true }),
+  ).toMatchObject({ version: 3, status: "active" });
   await page.goto("/chat");
 
   await runDemoEvent(page, "due_date_reached");

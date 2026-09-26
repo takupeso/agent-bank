@@ -1,4 +1,9 @@
-import { runDemoEvent, sendChat } from "./helpers";
+import {
+  runDemoEvent,
+  sendChat,
+  pauseRuleViaApi,
+  changeRuleViaApi,
+} from "./helpers";
 import { test, expect, demoApprove } from "./helpers";
 test("redeem all investment through chat and restore original TD", async ({
   page,
@@ -94,13 +99,7 @@ test("redeem multiple positions even after investment rule is stopped", async ({
     ),
   ).toBeVisible();
   await page.goto("/rules");
-  await page.getByRole("tab", { name: "Token operations" }).click();
-  await page.getByText("Edit settings", { exact: true }).click();
-  await page
-    .getByLabel("Investment limit per transaction (JPY)")
-    .fill("200000");
-  await page.getByRole("button", { name: "Save changes" }).last().click();
-  await demoApprove(page);
+  await changeRuleViaApi(page, "investment", { maxInvestmentJpy: "200000" });
   await page.goto("/chat");
 
   await expect(
@@ -130,9 +129,10 @@ test("redeem multiple positions even after investment rule is stopped", async ({
   expect(after.locked).toBe(data.locked);
   expect(after.treasuryUsdc).toBe(data.treasuryUsdc);
   await page.goto("/rules");
-  await page.getByRole("tab", { name: "Token operations" }).click();
-  await page.getByRole("button", { name: "Pause" }).last().click();
-  await expect(page.getByText("Paused · Version 3")).toBeVisible();
+  expect(await pauseRuleViaApi(page, "investment")).toMatchObject({
+    version: 3,
+    status: "stopped",
+  });
   await page.goto("/chat");
 
   await sendChat(page, "Redeem all investments to TD");
