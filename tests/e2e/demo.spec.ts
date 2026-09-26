@@ -25,7 +25,9 @@ test("replay complete demo twice and inspect all five screens", async ({
       })
       .click();
     await demoApprove(page);
-    await expect(page.getByText("承認時の設定", { exact: true })).toBeVisible();
+    await expect(page.getByText("承認時の設定", { exact: true })).toHaveCount(
+      2,
+    );
     await openDemoActions(page);
     await page.getByRole("button", { name: "デモ：支払期日を迎える" }).click();
     await expect(
@@ -39,29 +41,6 @@ test("replay complete demo twice and inspect all five screens", async ({
       fullPage: true,
     });
     await page.goto("/chat");
-    await openDemoActions(page);
-    await openDemoActions(page);
-    await page
-      .getByRole("button", { name: "余力を運用したい", exact: true })
-      .click();
-    await openDemoActions(page);
-    await page
-      .getByRole("button", {
-        name: "そうしてください（運用設定）",
-        exact: true,
-      })
-      .click();
-    await demoApprove(page);
-    await expect(
-      page.getByText(
-        "余力の自動運用を設定しました。承認条件を再確認して運用を開始します。",
-      ),
-    ).toBeVisible();
-    await expect(
-      page.getByText(
-        "¥400,000を別段口座にlockし、2,500擬似USDC相当を模擬運用しました。",
-      ),
-    ).toBeVisible();
     await page.goto("/investment");
     await expect(page.getByText("2,500 USDC", { exact: true })).toBeVisible();
     await page.screenshot({

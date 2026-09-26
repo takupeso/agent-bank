@@ -1,5 +1,5 @@
 "use client";
-import { apiFetch } from "../api-client";
+import { apiFetch, apiPost } from "../api-client";
 import { WorldApproval, type WorldRequest } from "../world-approval";
 import { DemoEvent, RunDetails } from "./demo-event";
 import { Conditions, ProposalCard } from "./rule-card";
@@ -21,6 +21,11 @@ export function AgentPanel() {
   const [approval, setApproval] = useState<{
     input: WorldRequest;
     text: string;
+  }>();
+  const [mailPermission, setMailPermission] = useState<{
+    proposalId: string;
+    text: string;
+    mailIds: string[];
   }>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -73,6 +78,15 @@ export function AgentPanel() {
       setApproval(
         last?.kind === "approval-request"
           ? { input: last.data?.input as WorldRequest, text: value }
+          : undefined,
+      );
+      setMailPermission(
+        last?.kind === "mail-permission-request"
+          ? {
+              proposalId: last.data?.proposalId as string,
+              mailIds: last.data?.mailIds as string[],
+              text: value,
+            }
           : undefined,
       );
       window.dispatchEvent(new Event("agent-bank:invoices-updated"));
@@ -205,13 +219,18 @@ export function AgentPanel() {
           }}
         >
           <button
-            disabled={busy || !!approval}
+            disabled={busy || !!approval || !!mailPermission}
             onClick={() => send("サンプルメールの閲覧を許可して確認して")}
           >
             サンプルメールの閲覧を許可して確認
           </button>
           <button
-            disabled={busy || !!approval || !hasUnacceptedProposal("payment")}
+            disabled={
+              busy ||
+              !!approval ||
+              !!mailPermission ||
+              !hasUnacceptedProposal("payment")
+            }
             onClick={() => send("そうしてください")}
           >
             そうしてください（支払い設定）
@@ -230,14 +249,17 @@ export function AgentPanel() {
             }}
           />
           <button
-            disabled={busy || !!approval}
+            disabled={busy || !!approval || !!mailPermission}
             onClick={() => send("余力を運用したい")}
           >
             余力を運用したい
           </button>
           <button
             disabled={
-              busy || !!approval || !hasUnacceptedProposal("investment")
+              busy ||
+              !!approval ||
+              !!mailPermission ||
+              !hasUnacceptedProposal("investment")
             }
             onClick={() => send("そうしてください")}
           >
@@ -257,7 +279,7 @@ export function AgentPanel() {
             }}
           />
           <button
-            disabled={busy || !!approval}
+            disabled={busy || !!approval || !!mailPermission}
             onClick={() => send("運用分を全部TDに戻して")}
           >
             運用分を全部TDに戻して
@@ -279,9 +301,61 @@ export function AgentPanel() {
             onChange={(e) => setText(e.target.value)}
             placeholder="メールを確認して、支払いを自動化して"
           />
-          <button disabled={busy || !!approval || !text.trim()}>送信</button>
+          <button
+            disabled={busy || !!approval || !!mailPermission || !text.trim()}
+          >
+            送信
+          </button>
         </div>
       </form>
+      {mailPermission && (
+        <section
+          className="panel approval-policy"
+          aria-label="メール閲覧の確認"
+        >
+          <h2>メール閲覧を許可</h2>
+          <p>対象Agent：bank-agent</p>
+          <p>許可する操作：業務データ参照・条件の提案・指定メールの閲覧</p>
+          <p>
+            閲覧範囲：
+            {mailPermission.mailIds
+              .map((id) =>
+                id === "aoba-mail"
+                  ? "アオバデザインのサンプルメール"
+                  : "サクラオフィスのサンプルメール",
+              )
+              .join("・")}
+          </p>
+          <div className="approval-actions">
+            <button
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  await apiPost("/api/delegations/confirm", {
+                    proposalId: mailPermission.proposalId,
+                  });
+                  const request = mailPermission.text;
+                  setMailPermission(undefined);
+                  setBusy(false);
+                  await send(request);
+                } catch (e) {
+                  setError(String(e));
+                  setBusy(false);
+                }
+              }}
+            >
+              この内容で許可して確認
+            </button>
+            <button
+              disabled={busy}
+              onClick={() => setMailPermission(undefined)}
+            >
+              キャンセル
+            </button>
+          </div>
+        </section>
+      )}
       {approval && (
         <WorldApproval
           input={approval.input}

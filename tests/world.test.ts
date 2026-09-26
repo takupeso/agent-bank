@@ -287,6 +287,72 @@ test("World applies exact policy atomically, records scopes and rejects bearer a
   await disableRule("payment", human);
   assert.throws(() => grants.assertScope(a, "payment"));
 });
+test("mail uses human screen confirmation and one World proof approves both initial rules", async () => {
+  const fetch = verifier();
+  await enroll();
+  const mail = grants.createDelegationProposal(human, [
+    "aoba-mail",
+    "sakura-mail",
+  ]);
+  const confirmed = world.confirmMailDelegation(mail.id, human);
+  const a = agent();
+  assert.deepEqual(grants.allowedMailIds(a), ["aoba-mail", "sakura-mail"]);
+  assert.equal(
+    confirmed.delegation!.authorization.approvalMethod,
+    "human-confirmation",
+  );
+  assert.equal(fetch.mock.callCount(), 1, "only login uses World so far");
+  const st = auth.authState();
+  for (const [id, kind, value] of [
+    ["payment-setup", "payment", conditions],
+    [
+      "investment-setup",
+      "investment",
+      {
+        ...conditions,
+        id: "investment",
+        recipientId: "",
+        maxPaymentJpy: "0",
+        monthlyLimitJpy: "0",
+        maxInvestmentJpy: "400000",
+        safetyBufferJpy: "100000",
+      },
+    ],
+  ] as const)
+    put<Proposal>("proposals", {
+      id,
+      kind,
+      conditions: value,
+      baseVersion: 0,
+      sourceIds: [],
+      status: "proposed",
+      accountId: human.accountId,
+      agentId: auth.fixedAgentId,
+      authMode: st.mode,
+      generation: st.generation,
+      instanceId: state.id,
+    });
+  const c = world.beginChallenge(
+    {
+      purpose: "setup",
+      paymentProposalId: "payment-setup",
+      investmentProposalId: "investment-setup",
+    },
+    owner,
+    human,
+  );
+  assert.deepEqual(c.policy!.scopes, ["payment", "investment", "redemption"]);
+  const result = await world.completeChallenge(c.id, owner, proof(c), human);
+  assert.equal(fetch.mock.callCount(), 2);
+  assert.equal(result.rules?.length, 2);
+  for (const id of ["payment", "investment"] as const) {
+    const rule = get<Rule>("rules", id)!;
+    assert.equal(rule.authorization?.approvalId, c.id);
+    world.assertRuleApproval(rule);
+    assert.ok(grants.assertScope(a, id));
+  }
+  await assert.rejects(world.completeChallenge(c.id, owner, proof(c), human));
+});
 test("changed policy or target, stale version, browser, expiry and cancellation cannot apply", async () => {
   verifier();
   await enroll();

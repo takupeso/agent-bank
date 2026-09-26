@@ -25,7 +25,7 @@ export const apiPolicy: ReadonlyArray<{
   },
   {
     method: "POST",
-    path: /^\/api\/(world|chat\/messages|demo\/(events|reset|approvals)|redemptions|delegations\/proposals|delegations\/[^/]+\/revoke|rules\/[^/]+\/disable)$/,
+    path: /^\/api\/(world|chat\/messages|demo\/(events|reset|approvals)|redemptions|delegations\/(proposals|confirm)|delegations\/[^/]+\/revoke|rules\/[^/]+\/disable)$/,
     role: "human",
   },
   { method: "PATCH", path: /^\/api\/rules$/, role: "human" },

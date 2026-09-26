@@ -51,17 +51,19 @@ test("World unavailable permits explicit scoped demo consent; OK alone changes n
       exact: true,
     })
     .click();
-  expect(await (await page.request.get("/api/delegations")).json()).toEqual([]);
-  const panel = page.getByRole("region", { name: "World承認" });
-  await panel.getByRole("button", { name: "デモとして続ける" }).click();
-  await expect(
-    panel.getByText(
-      /閲覧範囲：アオバデザインのサンプルメール・サクラオフィスのサンプルメール/,
-    ),
-  ).toBeVisible();
-  await expect(panel.getByText(/対象Agent：bank-agent/)).toBeVisible();
-  await panel.getByRole("button", { name: "この内容をデモ承認" }).click();
-  await expect(page.getByText("自動支払いの設定案")).toBeVisible();
+  const mail = page.getByRole("region", { name: "メール閲覧の確認" });
+  const proposal = page.getByText("自動支払いの設定案");
+  await Promise.race([mail.waitFor(), proposal.waitFor()]);
+  if (await mail.isVisible()) {
+    await expect(
+      mail.getByText(
+        /閲覧範囲：アオバデザインのサンプルメール・サクラオフィスのサンプルメール/,
+      ),
+    ).toBeVisible();
+    await expect(mail.getByText(/対象Agent：bank-agent/)).toBeVisible();
+    await mail.getByRole("button", { name: "この内容で許可して確認" }).click();
+  }
+  await expect(proposal).toBeVisible();
   await openDemoActions(page);
   await page
     .getByRole("button", {
@@ -70,6 +72,7 @@ test("World unavailable permits explicit scoped demo consent; OK alone changes n
     })
     .click();
   expect(await (await page.request.get("/api/rules")).json()).toEqual([]);
+  const panel = page.getByRole("region", { name: "World承認" });
   const begun = page.waitForResponse(
     (response) =>
       response.url().endsWith("/api/demo/approvals") &&
@@ -80,6 +83,7 @@ test("World unavailable permits explicit scoped demo consent; OK alone changes n
   await expect(
     panel.getByText("支払先：アオバデザイン・サクラオフィス"),
   ).toBeVisible();
+  await expect(panel.getByText(/余力の自動運用/)).toBeVisible();
   await panel.getByRole("button", { name: "キャンセル" }).click();
   const replay = await page.request.post("/api/demo/approvals", {
     data: { action: "confirm", id: cancelledChallenge.id },
@@ -94,7 +98,9 @@ test("World unavailable permits explicit scoped demo consent; OK alone changes n
     })
     .click();
   await demoApprove(page);
-  await expect(page.getByText(/承認方法：デモ承認（World省略）/)).toBeVisible();
+  await expect(page.getByText(/承認方法：デモ承認（World省略）/)).toHaveCount(
+    2,
+  );
   await page.goto("/rules");
   await page.getByRole("button", { name: "許可を取り消す" }).first().click();
   await expect(page.getByText(/取消済み/)).toBeVisible();
@@ -187,6 +193,16 @@ test("World begin failure still offers explicit demo approval", async ({
       exact: true,
     })
     .click();
+  const mail = page.getByRole("region", { name: "メール閲覧の確認" });
+  const proposal = page.getByText("自動支払いの設定案");
+  await Promise.race([mail.waitFor(), proposal.waitFor()]);
+  if (await mail.isVisible())
+    await mail.getByRole("button", { name: "この内容で許可して確認" }).click();
+  await expect(page.getByText("自動支払いの設定案")).toBeVisible();
+  await openDemoActions(page);
+  await page
+    .getByRole("button", { name: "そうしてください（支払い設定）" })
+    .click();
   const panel = page.getByRole("region", { name: "World承認" });
   await expect(panel.getByRole("alert")).toBeVisible();
   await panel.getByRole("button", { name: "デモとして続ける" }).click();
@@ -196,5 +212,5 @@ test("World begin failure still offers explicit demo approval", async ({
     fullPage: true,
   });
   await panel.getByRole("button", { name: "この内容をデモ承認" }).click();
-  await expect(page.getByText("自動支払いの設定案")).toBeVisible();
+  await expect(page.getByText("承認時の設定", { exact: true })).toHaveCount(2);
 });

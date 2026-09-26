@@ -71,8 +71,8 @@ export async function chat(
       message(
         "assistant",
         "サンプルメールの閲覧を許可しますか？",
-        "approval-request",
-        { input: { purpose: "delegation", proposalId: proposal.id } },
+        "mail-permission-request",
+        { proposalId: proposal.id, mailIds: proposal.conditions.mailIds },
       );
     } else {
       const invoices = await readAuthorized(agent);
@@ -93,6 +93,13 @@ export async function chat(
         "proposal",
         { proposal },
       );
+      const investment = await proposeInvestment(agent);
+      message(
+        "assistant",
+        `必要資金と予備資金を残し、1回¥${BigInt(investment.proposal.conditions.maxInvestmentJpy).toLocaleString("ja-JP")}を上限に運用しますか？`,
+        "proposal",
+        investment,
+      );
     }
   } else if (text === redemptionRequest) {
     const request = createRedemptionRequest(principal);
@@ -112,11 +119,32 @@ export async function chat(
     const proposal = get<Proposal>("proposals", proposalId);
     if (!proposal || proposal.status !== "proposed")
       throw new Error("Pending proposal required");
+    const payment = all<Proposal>("proposals")
+      .filter((p) => p.kind === "payment" && p.status === "proposed")
+      .at(-1);
+    const investment = all<Proposal>("proposals")
+      .filter((p) => p.kind === "investment" && p.status === "proposed")
+      .at(-1);
+    const setup =
+      payment &&
+      investment &&
+      !get("rules", "payment") &&
+      !get("rules", "investment");
     message(
       "assistant",
-      "具体的な条件を確認して承認してください。",
+      setup
+        ? "支払いと運用の条件をまとめて確認してください。"
+        : "具体的な条件を確認して承認してください。",
       "approval-request",
-      { input: { purpose: "proposal", proposalId } },
+      {
+        input: setup
+          ? {
+              purpose: "setup",
+              paymentProposalId: payment.id,
+              investmentProposalId: investment.id,
+            }
+          : { purpose: "proposal", proposalId },
+      },
     );
   } else
     message(
