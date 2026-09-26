@@ -183,13 +183,7 @@ export function AgentPanel() {
     <aside id="agent-panel" className="agent-panel" aria-label="Agent chat">
       <header className="agent-panel-header">
         <span className="agent-avatar" aria-hidden="true" />
-        <div>
-          <h2>Agent</h2>
-          <p>
-            <span className="agent-status" aria-hidden="true" />
-            Acts only within the terms you approve
-          </p>
-        </div>
+        <h2>Agent</h2>
       </header>
       <section
         ref={conversation}

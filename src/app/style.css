@@ -695,22 +695,6 @@ header p {
   margin: 0;
   font-size: 15px;
 }
-.agent-panel-header p {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 2px 0 0;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--muted);
-}
-.agent-status {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #10b981;
-  box-shadow: 0 0 0 3px #10b98126;
-}
 .agent-panel small {
   font-size: 10px;
   line-height: 1.4;
